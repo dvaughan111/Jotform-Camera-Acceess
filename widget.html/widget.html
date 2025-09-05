@@ -4,13 +4,201 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JotForm Camera Widget</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        #camera-widget {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .primary-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .secondary-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .success-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        #camera-video {
+            width: 100%;
+            max-width: 350px;
+            height: auto;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        #photo-canvas {
+            width: 100%;
+            max-width: 350px;
+            height: auto;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
     <div id="camera-widget">
         <!-- Camera interface will be built here by JavaScript -->
     </div>
     
-    <script src="js/camera.js"></script>
+    <script>
+        class CameraWidget {
+            constructor() {
+                this.video = null;
+                this.canvas = null;
+                this.capturedImageData = null;
+                this.currentState = 'initial';
+                this.init();
+            }
+
+            init() {
+                this.createInterface();
+                this.setupEventListeners();
+            }
+
+            createInterface() {
+                const container = document.getElementById('camera-widget');
+                container.innerHTML = `
+                    <div id="initial-state">
+                        <button id="start-camera-btn" class="primary-btn">
+                            📷 Take Photo
+                        </button>
+                    </div>
+
+                    <div id="camera-state" style="display: none;">
+                        <video id="camera-video" autoplay playsinline></video>
+                        <button id="capture-btn" class="primary-btn">Capture</button>
+                        <button id="cancel-btn" class="secondary-btn">Cancel</button>
+                    </div>
+
+                    <div id="preview-state" style="display: none;">
+                        <canvas id="photo-canvas"></canvas>
+                        <div class="preview-actions">
+                            <button id="approve-btn" class="success-btn">✓ Approve & Upload</button>
+                            <button id="retake-btn" class="secondary-btn">↻ Retake</button>
+                        </div>
+                    </div>
+
+                    <div id="uploading-state" style="display: none;">
+                        <p>Uploading photo...</p>
+                    </div>
+                `;
+
+                this.video = document.getElementById('camera-video');
+                this.canvas = document.getElementById('photo-canvas');
+            }
+
+            setupEventListeners() {
+                document.getElementById('start-camera-btn').addEventListener('click', () => {
+                    this.startCamera();
+                });
+
+                document.getElementById('capture-btn').addEventListener('click', () => {
+                    this.capturePhoto();
+                });
+
+                document.getElementById('cancel-btn').addEventListener('click', () => {
+                    this.stopCamera();
+                    this.showState('initial');
+                });
+
+                document.getElementById('approve-btn').addEventListener('click', () => {
+                    this.approvePhoto();
+                });
+
+                document.getElementById('retake-btn').addEventListener('click', () => {
+                    this.showState('camera');
+                });
+            }
+
+            async startCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: 'environment' } 
+                    });
+                    
+                    this.video.srcObject = stream;
+                    this.showState('camera');
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    alert('Could not access camera. Please make sure you have granted camera permissions.');
+                }
+            }
+
+            capturePhoto() {
+                const context = this.canvas.getContext('2d');
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+                context.drawImage(this.video, 0, 0);
+                
+                this.canvas.toBlob((blob) => {
+                    this.capturedImageData = blob;
+                }, 'image/jpeg', 0.8);
+                
+                this.stopCamera();
+                this.showState('preview');
+            }
+
+            stopCamera() {
+                if (this.video.srcObject) {
+                    this.video.srcObject.getTracks().forEach(track => track.stop());
+                }
+            }
+
+            showState(state) {
+                document.getElementById('initial-state').style.display = 'none';
+                document.getElementById('camera-state').style.display = 'none';
+                document.getElementById('preview-state').style.display = 'none';
+                document.getElementById('uploading-state').style.display = 'none';
+                
+                document.getElementById(state + '-state').style.display = 'block';
+                this.currentState = state;
+            }
+
+            approvePhoto() {
+                this.showState('uploading');
+                this.uploadToJotForm();
+            }
+
+            uploadToJotForm() {
+                console.log('Uploading photo...', this.capturedImageData);
+                setTimeout(() => {
+                    alert('Photo uploaded successfully!');
+                    this.showState('initial');
+                }, 2000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new CameraWidget();
+        });
+    </script>
 </body>
 </html>
