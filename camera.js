@@ -14,23 +14,21 @@ class CameraWidget {
         this.createInterface();
         this.setupEventListeners();
         
-        // Let JotForm handle the sizing - don't manually resize
-        if (this.isInIframe && window.JFCustomWidget) {
-            window.JFCustomWidget.setWidgetTitle('Camera Capture');
-        }
+        // Set initial compact size
+        this.updateWidgetSize(120); // Compact height for just the button
     }
 
     createInterface() {
         const container = document.getElementById('camera-widget');
         container.innerHTML = `
             <div class="widget-container">
-                <div id="initial-state" class="state-container">
+                <div id="initial-state" class="state-container compact-view">
                     <button id="start-camera-btn" class="primary-btn">
                         📷 Take Photo
                     </button>
                 </div>
 
-                <div id="camera-state" class="state-container" style="display: none;">
+                <div id="camera-state" class="state-container expanded-view" style="display: none;">
                     <video id="camera-video" autoplay playsinline muted></video>
                     <div class="button-row">
                         <button id="capture-btn" class="primary-btn">📸 Capture</button>
@@ -38,7 +36,7 @@ class CameraWidget {
                     </div>
                 </div>
 
-                <div id="preview-state" class="state-container" style="display: none;">
+                <div id="preview-state" class="state-container expanded-view" style="display: none;">
                     <canvas id="photo-canvas"></canvas>
                     <div class="preview-actions">
                         <button id="approve-btn" class="success-btn">✓ Approve & Upload</button>
@@ -46,12 +44,12 @@ class CameraWidget {
                     </div>
                 </div>
 
-                <div id="uploading-state" class="state-container" style="display: none;">
+                <div id="uploading-state" class="state-container compact-view" style="display: none;">
                     <p class="uploading-text">Uploading photo...</p>
                     <div class="progress-bar"></div>
                 </div>
 
-                <div id="thumbnail-state" class="state-container" style="display: none;">
+                <div id="thumbnail-state" class="state-container compact-view" style="display: none;">
                     <p class="success-message">Your Photo:</p>
                     <div class="thumbnail-container">
                         <img id="uploaded-thumbnail" class="thumbnail-image" />
@@ -98,8 +96,17 @@ class CameraWidget {
         });
     }
 
+    updateWidgetSize(height) {
+        if (this.isInIframe && window.JFCustomWidget) {
+            window.JFCustomWidget.resize(height);
+        }
+    }
+
     async startCamera() {
         try {
+            // Expand widget before starting camera
+            this.updateWidgetSize(400);
+            
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     facingMode: 'environment',
@@ -110,8 +117,11 @@ class CameraWidget {
             
             this.video.srcObject = stream;
             this.showState('camera');
+            
         } catch (error) {
             console.error('Error accessing camera:', error);
+            // Reset to compact size on error
+            this.updateWidgetSize(120);
             alert('Could not access camera. Please make sure you have granted camera permissions and are using a secure connection (HTTPS).');
         }
     }
@@ -119,7 +129,6 @@ class CameraWidget {
     capturePhoto() {
         const context = this.canvas.getContext('2d');
         
-        // Use fixed size for consistency
         this.canvas.width = 640;
         this.canvas.height = 480;
         
@@ -148,6 +157,23 @@ class CameraWidget {
         // Show requested state
         document.getElementById(state + '-state').style.display = 'block';
         this.currentState = state;
+        
+        // Update widget size based on state
+        switch(state) {
+            case 'initial':
+                this.updateWidgetSize(120); // Compact
+                break;
+            case 'camera':
+            case 'preview':
+                this.updateWidgetSize(500); // Expanded for camera/preview
+                break;
+            case 'uploading':
+                this.updateWidgetSize(100); // Compact for uploading
+                break;
+            case 'thumbnail':
+                this.updateWidgetSize(200); // Compact for thumbnail
+                break;
+        }
     }
 
     approvePhoto() {
@@ -163,7 +189,6 @@ class CameraWidget {
                 const fileName = 'photo-' + Date.now() + '.jpg';
                 this.uploadedFileName = fileName;
                 
-                // JOTFORM UPLOAD INTEGRATION
                 if (window.JFCustomWidget) {
                     window.JFCustomWidget.submit({
                         type: 'file',
@@ -212,12 +237,10 @@ class CameraWidget {
 
     deletePhoto() {
         if (confirm('Are you sure you want to delete this photo?')) {
-            // Clean up the object URL
             if (this.uploadedImageUrl) {
                 URL.revokeObjectURL(this.uploadedImageUrl);
             }
             
-            // Notify JotForm that file was removed
             if (window.JFCustomWidget) {
                 window.JFCustomWidget.submit({
                     type: 'file',
