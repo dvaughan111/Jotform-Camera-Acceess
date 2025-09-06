@@ -14,67 +14,51 @@ class CameraWidget {
         this.createInterface();
         this.setupEventListeners();
         
-        if (this.isInIframe) {
-            window.parent.postMessage({
-                type: 'widget-ready',
-                height: this.getWidgetHeight()
-            }, '*');
-        }
-    }
-    
-    getWidgetHeight() {
-        switch(this.currentState) {
-            case 'camera': return 500;
-            case 'preview': return 600;
-            case 'uploading': return 200;
-            case 'success': return 300;
-            case 'thumbnail': return 200;
-            default: return 150;
+        // Let JotForm handle the sizing - don't manually resize
+        if (this.isInIframe && window.JFCustomWidget) {
+            window.JFCustomWidget.setWidgetTitle('Camera Capture');
         }
     }
 
     createInterface() {
         const container = document.getElementById('camera-widget');
         container.innerHTML = `
-            <div id="initial-state">
-                <button id="start-camera-btn" class="primary-btn">
-                    📷 Take Photo
-                </button>
-            </div>
-
-            <div id="camera-state" style="display: none;">
-                <video id="camera-video" autoplay playsinline muted></video>
-                <div class="button-row">
-                    <button id="capture-btn" class="primary-btn">📸 Capture</button>
-                    <button id="cancel-btn" class="secondary-btn">✖ Cancel</button>
+            <div class="widget-container">
+                <div id="initial-state" class="state-container">
+                    <button id="start-camera-btn" class="primary-btn">
+                        📷 Take Photo
+                    </button>
                 </div>
-            </div>
 
-            <div id="preview-state" style="display: none;">
-                <canvas id="photo-canvas"></canvas>
-                <div class="preview-actions">
-                    <button id="approve-btn" class="success-btn">✓ Approve & Upload</button>
-                    <button id="retake-btn" class="secondary-btn">↻ Retake</button>
+                <div id="camera-state" class="state-container" style="display: none;">
+                    <video id="camera-video" autoplay playsinline muted></video>
+                    <div class="button-row">
+                        <button id="capture-btn" class="primary-btn">📸 Capture</button>
+                        <button id="cancel-btn" class="secondary-btn">✖ Cancel</button>
+                    </div>
                 </div>
-            </div>
 
-            <div id="uploading-state" style="display: none;">
-                <p>Uploading photo...</p>
-                <div class="progress-bar"></div>
-            </div>
-
-            <div id="success-state" style="display: none;">
-                <p class="success-message">✓ Photo uploaded successfully!</p>
-                <button id="new-photo-btn" class="primary-btn">📷 Take Another Photo</button>
-            </div>
-
-            <div id="thumbnail-state" style="display: none;">
-                <p class="success-message">Your Photo:</p>
-                <div class="thumbnail-container">
-                    <img id="uploaded-thumbnail" class="thumbnail-image" />
-                    <button id="delete-thumbnail" class="delete-btn">✕</button>
+                <div id="preview-state" class="state-container" style="display: none;">
+                    <canvas id="photo-canvas"></canvas>
+                    <div class="preview-actions">
+                        <button id="approve-btn" class="success-btn">✓ Approve & Upload</button>
+                        <button id="retake-btn" class="secondary-btn">↻ Retake</button>
+                    </div>
                 </div>
-                <button id="replace-photo-btn" class="secondary-btn">Replace Photo</button>
+
+                <div id="uploading-state" class="state-container" style="display: none;">
+                    <p class="uploading-text">Uploading photo...</p>
+                    <div class="progress-bar"></div>
+                </div>
+
+                <div id="thumbnail-state" class="state-container" style="display: none;">
+                    <p class="success-message">Your Photo:</p>
+                    <div class="thumbnail-container">
+                        <img id="uploaded-thumbnail" class="thumbnail-image" />
+                        <button id="delete-thumbnail" class="delete-btn">✕</button>
+                    </div>
+                    <button id="replace-photo-btn" class="secondary-btn">Replace Photo</button>
+                </div>
             </div>
         `;
 
@@ -104,10 +88,6 @@ class CameraWidget {
             this.showState('camera');
         });
 
-        document.getElementById('new-photo-btn').addEventListener('click', () => {
-            this.showState('initial');
-        });
-
         document.getElementById('replace-photo-btn').addEventListener('click', () => {
             this.showState('initial');
         });
@@ -123,8 +103,8 @@ class CameraWidget {
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     facingMode: 'environment',
-                    width: { ideal: 1280, max: 1920 },
-                    height: { ideal: 720, max: 1080 }
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
                 } 
             });
             
@@ -139,10 +119,11 @@ class CameraWidget {
     capturePhoto() {
         const context = this.canvas.getContext('2d');
         
-        this.canvas.width = this.video.videoWidth;
-        this.canvas.height = this.video.videoHeight;
+        // Use fixed size for consistency
+        this.canvas.width = 640;
+        this.canvas.height = 480;
         
-        context.drawImage(this.video, 0, 0);
+        context.drawImage(this.video, 0, 0, 640, 480);
         
         this.canvas.toBlob((blob) => {
             this.capturedImageData = blob;
@@ -158,24 +139,15 @@ class CameraWidget {
     }
 
     showState(state) {
-        document.getElementById('initial-state').style.display = 'none';
-        document.getElementById('camera-state').style.display = 'none';
-        document.getElementById('preview-state').style.display = 'none';
-        document.getElementById('uploading-state').style.display = 'none';
-        document.getElementById('success-state').style.display = 'none';
-        document.getElementById('thumbnail-state').style.display = 'none';
+        // Hide all states
+        const states = ['initial', 'camera', 'preview', 'uploading', 'thumbnail'];
+        states.forEach(s => {
+            document.getElementById(s + '-state').style.display = 'none';
+        });
         
+        // Show requested state
         document.getElementById(state + '-state').style.display = 'block';
         this.currentState = state;
-        
-        if (this.isInIframe) {
-            setTimeout(() => {
-                window.parent.postMessage({
-                    type: 'widget-resize',
-                    height: this.getWidgetHeight()
-                }, '*');
-            }, 100);
-        }
     }
 
     approvePhoto() {
@@ -192,36 +164,20 @@ class CameraWidget {
                 this.uploadedFileName = fileName;
                 
                 // JOTFORM UPLOAD INTEGRATION
-                if (this.isInIframe && window.JFCustomWidget) {
-                    // Use JotForm's built-in file upload
+                if (window.JFCustomWidget) {
                     window.JFCustomWidget.submit({
                         type: 'file',
                         data: {
                             file: base64data,
-                            filename: fileName,
-                            question: 'Camera Photo'
+                            filename: fileName
                         }
                     });
                     
                     this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
                     this.showThumbnail();
                     
-                } else if (this.isInIframe) {
-                    // Alternative method using postMessage
-                    window.parent.postMessage({
-                        type: 'jotform-widget-file-upload',
-                        data: {
-                            file: base64data,
-                            filename: fileName,
-                            mimetype: 'image/jpeg'
-                        }
-                    }, '*');
-                    
-                    this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
-                    this.showThumbnail();
-                    
                 } else {
-                    // Testing mode
+                    // Fallback for testing
                     console.log('Testing mode - would upload:', fileName);
                     this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
                     setTimeout(() => {
@@ -262,7 +218,7 @@ class CameraWidget {
             }
             
             // Notify JotForm that file was removed
-            if (this.isInIframe && window.JFCustomWidget) {
+            if (window.JFCustomWidget) {
                 window.JFCustomWidget.submit({
                     type: 'file',
                     data: null
