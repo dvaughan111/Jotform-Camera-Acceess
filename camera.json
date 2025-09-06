@@ -1,0 +1,9 @@
+{
+  "name": "Camera Capture Widget",
+  "description": "Take photos with camera and auto-upload after approval",
+  "author": "Your Name",
+  "version": "1.0.0",
+  "width": 400,
+  "height": 300,
+  "category": "media"
+}
