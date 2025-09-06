@@ -1,192 +1,55 @@
-/* Camera Widget Styles */
-#camera-widget {
-    max-width: 100%;
-    width: 100%;
-    margin: 0 auto;
-    padding: 15px;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    background-color: #ffffff;
-    box-sizing: border-box;
+/* Add these styles to your existing camera.css */
+
+.thumbnail-container {
+    position: relative;
+    display: inline-block;
+    margin: 15px 0;
 }
 
-.primary-btn {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 16px 32px;
-    font-size: 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin: 8px;
-    width: 100%;
-    max-width: 280px;
-    touch-action: manipulation;
-}
-
-.primary-btn:hover {
-    background-color: #0056b3;
-}
-
-.secondary-btn {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    padding: 14px 24px;
-    font-size: 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin: 8px;
-    width: 100%;
-    max-width: 200px;
-    touch-action: manipulation;
-}
-
-.secondary-btn:hover {
-    background-color: #545b62;
-}
-
-.success-btn {
-    background-color: #28a745;
-    color: white;
-    border: none;
-    padding: 16px 32px;
-    font-size: 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin: 8px;
-    width: 100%;
-    max-width: 280px;
-    touch-action: manipulation;
-}
-
-.success-btn:hover {
-    background-color: #1e7e34;
-}
-
-#camera-video {
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-    border: 3px solid #007bff;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-#photo-canvas {
-    width: 100%;
-    max-width: 100%;
-    height: auto;
+.thumbnail-image {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
     border: 3px solid #28a745;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
 }
 
-.preview-actions {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
+.thumbnail-image:hover {
+    transform: scale(1.05);
 }
 
-.button-row {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
+.delete-btn {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
 }
 
-#uploading-state {
-    padding: 25px;
-    text-align: center;
+.delete-btn:hover {
+    background-color: #c82333;
 }
 
-#uploading-state p {
-    font-size: 20px;
-    color: #007bff;
-    margin-bottom: 20px;
-    font-weight: 500;
-}
-
-.progress-bar {
-    width: 100%;
-    height: 12px;
-    background-color: #e0e0e0;
-    border-radius: 6px;
-    overflow: hidden;
-    animation: pulse 1.5s infinite;
-    margin: 0 auto;
-}
-
-@keyframes pulse {
-    0% { background-color: #e0e0e0; }
-    50% { background-color: #007bff; }
-    100% { background-color: #e0e0e0; }
-}
-
-.success-message {
+.thumbnail-message {
     color: #28a745;
-    font-size: 18px;
-    font-weight: 500;
-    margin-bottom: 20px;
+    font-size: 16px;
+    margin-bottom: 15px;
 }
 
-/* Mobile-specific optimizations */
-@media (max-width: 768px) {
-    #camera-widget {
-        padding: 12px;
-        border-radius: 8px;
-    }
-    
-    .primary-btn, .success-btn {
-        padding: 18px 24px;
-        font-size: 16px;
-        margin: 6px 0;
-    }
-    
-    .secondary-btn {
-        padding: 16px 20px;
-        font-size: 15px;
-        margin: 6px 0;
-    }
-    
-    #camera-video, #photo-canvas {
-        border-width: 2px;
-        border-radius: 8px;
-        margin-bottom: 12px;
-    }
-    
-    .preview-actions {
-        margin-top: 15px;
-    }
+#thumbnail-state {
+    text-align: center;
+    padding: 20px;
 }
 
-/* Very small screens */
-@media (max-width: 480px) {
-    .preview-actions {
-        gap: 8px;
-    }
-    
-    .primary-btn, .success-btn, .secondary-btn {
-        max-width: none;
-        width: 100%;
-    }
-}
-
-/* Landscape orientation on mobile */
-@media (max-height: 500px) and (orientation: landscape) {
-    #camera-video {
-        max-height: 250px;
-        object-fit: cover;
-    }
+#replace-photo-btn {
+    margin-top: 15px;
 }
