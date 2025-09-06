@@ -7,6 +7,7 @@
     text-align: center;
     background-color: #ffffff;
     box-sizing: border-box;
+    min-height: 80px; /* Minimum height for compact view */
 }
 
 .widget-container {
@@ -17,6 +18,23 @@
 
 .state-container {
     width: 100%;
+    transition: all 0.3s ease;
+}
+
+/* Compact View (for initial, uploading, thumbnail states) */
+.compact-view {
+    padding: 10px 0;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Expanded View (for camera and preview states) */
+.expanded-view {
+    padding: 15px 0;
+    min-height: 400px;
 }
 
 .primary-btn {
@@ -29,11 +47,13 @@
     cursor: pointer;
     margin: 8px 0;
     width: 100%;
-    max-width: 250px;
+    max-width: 200px;
+    transition: all 0.3s ease;
 }
 
 .primary-btn:hover {
     background-color: #0056b3;
+    transform: translateY(-2px);
 }
 
 .secondary-btn {
@@ -46,7 +66,7 @@
     cursor: pointer;
     margin: 8px 0;
     width: 100%;
-    max-width: 200px;
+    max-width: 180px;
 }
 
 .secondary-btn:hover {
@@ -63,7 +83,7 @@
     cursor: pointer;
     margin: 8px 0;
     width: 100%;
-    max-width: 250px;
+    max-width: 200px;
 }
 
 .success-btn:hover {
@@ -73,19 +93,21 @@
 #camera-video {
     width: 100%;
     max-width: 100%;
-    height: auto;
+    height: 300px;
     border: 2px solid #007bff;
     border-radius: 8px;
     margin-bottom: 15px;
+    object-fit: cover;
 }
 
 #photo-canvas {
     width: 100%;
     max-width: 100%;
-    height: auto;
+    height: 300px;
     border: 2px solid #28a745;
     border-radius: 8px;
     margin-bottom: 15px;
+    object-fit: cover;
 }
 
 .preview-actions {
@@ -105,7 +127,6 @@
 }
 
 #uploading-state {
-    padding: 20px;
     text-align: center;
 }
 
@@ -141,12 +162,12 @@
 .thumbnail-container {
     position: relative;
     display: inline-block;
-    margin: 15px 0;
+    margin: 10px 0;
 }
 
 .thumbnail-image {
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     object-fit: cover;
     border: 2px solid #28a745;
     border-radius: 6px;
@@ -181,15 +202,31 @@
 @media (max-width: 480px) {
     #camera-widget {
         padding: 10px;
+        min-height: 70px;
+    }
+    
+    .compact-view {
+        min-height: 70px;
+        padding: 8px 0;
+    }
+    
+    .expanded-view {
+        min-height: 350px;
+    }
+    
+    #camera-video,
+    #photo-canvas {
+        height: 250px;
     }
     
     .primary-btn, .success-btn, .secondary-btn {
         max-width: none;
         width: 100%;
+        padding: 10px 20px;
     }
     
     .thumbnail-image {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
     }
 }
