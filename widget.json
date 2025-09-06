@@ -5,5 +5,8 @@
   "version": "1.0.0",
   "width": 400,
   "height": 300,
-  "category": "media"
+  "category": "media",
+  "html": "index.html",
+  "js": "camera.js",
+  "css": "camera.css"
 }
