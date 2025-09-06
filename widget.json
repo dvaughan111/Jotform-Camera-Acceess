@@ -1,7 +1,7 @@
 {
   "name": "Camera Capture Widget",
   "description": "Take photos with camera and auto-upload after approval",
-  "author": "Your Name",
+  "author": "UpClickCreative.com", 
   "version": "1.0.0",
   "width": 400,
   "height": 300,
