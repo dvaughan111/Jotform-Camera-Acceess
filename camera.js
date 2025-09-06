@@ -5,6 +5,8 @@ class CameraWidget {
         this.capturedImageData = null;
         this.currentState = 'initial';
         this.isInIframe = window.self !== window.top;
+        this.uploadedImageUrl = null;
+        this.uploadedFileName = null;
         this.init();
     }
 
@@ -12,7 +14,6 @@ class CameraWidget {
         this.createInterface();
         this.setupEventListeners();
         
-        // Let parent know widget is ready
         if (this.isInIframe) {
             window.parent.postMessage({
                 type: 'widget-ready',
@@ -22,12 +23,12 @@ class CameraWidget {
     }
     
     getWidgetHeight() {
-        // Dynamic height based on current state
         switch(this.currentState) {
             case 'camera': return 500;
             case 'preview': return 600;
             case 'uploading': return 200;
-            case 'success': return 250;
+            case 'success': return 300;
+            case 'thumbnail': return 200;
             default: return 150;
         }
     }
@@ -66,6 +67,15 @@ class CameraWidget {
                 <p class="success-message">✓ Photo uploaded successfully!</p>
                 <button id="new-photo-btn" class="primary-btn">📷 Take Another Photo</button>
             </div>
+
+            <div id="thumbnail-state" style="display: none;">
+                <p class="success-message">Your Photo:</p>
+                <div class="thumbnail-container">
+                    <img id="uploaded-thumbnail" class="thumbnail-image" />
+                    <button id="delete-thumbnail" class="delete-btn">✕</button>
+                </div>
+                <button id="replace-photo-btn" class="secondary-btn">Replace Photo</button>
+            </div>
         `;
 
         this.video = document.getElementById('camera-video');
@@ -94,11 +104,17 @@ class CameraWidget {
             this.showState('camera');
         });
 
-        // Handle new photo button in success state
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'new-photo-btn') {
-                this.showState('initial');
-            }
+        document.getElementById('new-photo-btn').addEventListener('click', () => {
+            this.showState('initial');
+        });
+
+        document.getElementById('replace-photo-btn').addEventListener('click', () => {
+            this.showState('initial');
+        });
+
+        document.getElementById('delete-thumbnail').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.deletePhoto();
         });
     }
 
@@ -123,14 +139,11 @@ class CameraWidget {
     capturePhoto() {
         const context = this.canvas.getContext('2d');
         
-        // Set canvas size to match video
         this.canvas.width = this.video.videoWidth;
         this.canvas.height = this.video.videoHeight;
         
-        // Draw current video frame to canvas
         context.drawImage(this.video, 0, 0);
         
-        // Convert canvas to blob for uploading
         this.canvas.toBlob((blob) => {
             this.capturedImageData = blob;
             this.stopCamera();
@@ -145,22 +158,16 @@ class CameraWidget {
     }
 
     showState(state) {
-        // Hide all states
         document.getElementById('initial-state').style.display = 'none';
         document.getElementById('camera-state').style.display = 'none';
         document.getElementById('preview-state').style.display = 'none';
         document.getElementById('uploading-state').style.display = 'none';
+        document.getElementById('success-state').style.display = 'none';
+        document.getElementById('thumbnail-state').style.display = 'none';
         
-        const successState = document.getElementById('success-state');
-        if (successState) {
-            successState.style.display = 'none';
-        }
-        
-        // Show requested state
         document.getElementById(state + '-state').style.display = 'block';
         this.currentState = state;
         
-        // Update iframe height if needed
         if (this.isInIframe) {
             setTimeout(() => {
                 window.parent.postMessage({
@@ -178,42 +185,52 @@ class CameraWidget {
 
     uploadToJotForm() {
         try {
-            // Convert blob to base64 for transmission
             const reader = new FileReader();
             reader.onloadend = () => {
                 const base64data = reader.result;
-                const fileName = 'camera-photo-' + Date.now() + '.jpg';
+                const fileName = 'photo-' + Date.now() + '.jpg';
+                this.uploadedFileName = fileName;
                 
-                if (this.isInIframe) {
-                    // Send to parent JotForm via postMessage
-                    window.parent.postMessage({
-                        type: 'jotform-widget-data',
+                // JOTFORM UPLOAD INTEGRATION
+                if (this.isInIframe && window.JFCustomWidget) {
+                    // Use JotForm's built-in file upload
+                    window.JFCustomWidget.submit({
+                        type: 'file',
                         data: {
-                            name: fileName,
                             file: base64data,
-                            size: this.capturedImageData.size,
-                            type: 'image/jpeg'
+                            filename: fileName,
+                            question: 'Camera Photo'
+                        }
+                    });
+                    
+                    this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
+                    this.showThumbnail();
+                    
+                } else if (this.isInIframe) {
+                    // Alternative method using postMessage
+                    window.parent.postMessage({
+                        type: 'jotform-widget-file-upload',
+                        data: {
+                            file: base64data,
+                            filename: fileName,
+                            mimetype: 'image/jpeg'
                         }
                     }, '*');
                     
-                    console.log('Photo data sent to JotForm parent');
-                    this.showState('success');
-                } else {
-                    // Fallback for testing outside iframe
-                    console.log('Testing mode - photo captured:', {
-                        name: fileName,
-                        size: this.capturedImageData.size,
-                        dataLength: base64data.length
-                    });
+                    this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
+                    this.showThumbnail();
                     
+                } else {
+                    // Testing mode
+                    console.log('Testing mode - would upload:', fileName);
+                    this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
                     setTimeout(() => {
-                        this.showState('success');
-                    }, 1500);
+                        this.showThumbnail();
+                    }, 1000);
                 }
             };
             
             reader.onerror = () => {
-                console.error('Error reading file');
                 alert('Error processing photo. Please try again.');
                 this.showState('preview');
             };
@@ -223,6 +240,40 @@ class CameraWidget {
             console.error('Upload error:', error);
             alert('Upload failed. Please try again.');
             this.showState('preview');
+        }
+    }
+
+    showThumbnail() {
+        const thumbnailImg = document.getElementById('uploaded-thumbnail');
+        if (thumbnailImg && this.uploadedImageUrl) {
+            thumbnailImg.src = this.uploadedImageUrl;
+            thumbnailImg.onclick = () => {
+                window.open(this.uploadedImageUrl, '_blank');
+            };
+        }
+        this.showState('thumbnail');
+    }
+
+    deletePhoto() {
+        if (confirm('Are you sure you want to delete this photo?')) {
+            // Clean up the object URL
+            if (this.uploadedImageUrl) {
+                URL.revokeObjectURL(this.uploadedImageUrl);
+            }
+            
+            // Notify JotForm that file was removed
+            if (this.isInIframe && window.JFCustomWidget) {
+                window.JFCustomWidget.submit({
+                    type: 'file',
+                    data: null
+                });
+            }
+            
+            this.uploadedImageUrl = null;
+            this.uploadedFileName = null;
+            this.capturedImageData = null;
+            
+            this.showState('initial');
         }
     }
 }
