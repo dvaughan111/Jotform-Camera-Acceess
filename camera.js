@@ -13,6 +13,9 @@ class CameraWidget {
     init() {
         this.createInterface();
         this.setupEventListeners();
+        
+        // Set initial compact size
+        this.resizeContainer(100);
     }
 
     createInterface() {
@@ -97,17 +100,56 @@ class CameraWidget {
         });
     }
 
-    resizeWidget(height) {
-        // Use JotForm's API to resize the widget container
-        if (this.isInIframe && typeof JFCustomWidget !== 'undefined') {
-            JFCustomWidget.resize(height);
+    resizeContainer(height) {
+        console.log('Attempting to resize to:', height + 'px');
+        
+        // Method 1: JotForm's official widget API
+        if (typeof JFCustomWidget !== 'undefined') {
+            try {
+                JFCustomWidget.resize(height);
+                console.log('Resized using JFCustomWidget API');
+                return true;
+            } catch (e) {
+                console.log('JFCustomWidget resize failed:', e);
+            }
         }
+        
+        // Method 2: postMessage to parent (common widget pattern)
+        if (window.parent && window.parent !== window) {
+            try {
+                window.parent.postMessage({
+                    type: 'resize',
+                    height: height,
+                    widget: 'camera'
+                }, '*');
+                console.log('Resize message sent via postMessage');
+                return true;
+            } catch (e) {
+                console.log('postMessage resize failed:', e);
+            }
+        }
+        
+        // Method 3: Try to find and resize the iframe directly
+        try {
+            const iframe = window.frameElement;
+            if (iframe) {
+                iframe.style.height = height + 'px';
+                iframe.style.minHeight = height + 'px';
+                console.log('Resized iframe directly');
+                return true;
+            }
+        } catch (e) {
+            console.log('Direct iframe resize failed:', e);
+        }
+        
+        console.log('All resize methods failed');
+        return false;
     }
 
     async startCamera() {
         try {
-            // Expand container to 400px height for camera view
-            this.resizeWidget(400);
+            // Expand container FIRST before starting camera
+            this.resizeContainer(400);
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
@@ -122,8 +164,8 @@ class CameraWidget {
             
         } catch (error) {
             console.error('Error accessing camera:', error);
-            // Reset to compact size on error
-            this.resizeWidget(100);
+            // Reset size on error
+            this.resizeContainer(100);
             alert('Could not access camera. Please make sure you have granted camera permissions.');
         }
     }
@@ -163,17 +205,17 @@ class CameraWidget {
         // Resize container based on state
         switch(state) {
             case 'initial':
-                this.resizeWidget(100); // Compact size for button only
+                this.resizeContainer(100); // Compact - just the button
                 break;
             case 'camera':
             case 'preview':
-                this.resizeWidget(400); // Expanded size for camera/preview
+                this.resizeContainer(400); // Expanded - camera view
                 break;
             case 'uploading':
-                this.resizeWidget(120); // Medium size for uploading
+                this.resizeContainer(120); // Medium - uploading message
                 break;
             case 'thumbnail':
-                this.resizeWidget(180); // Compact size for thumbnail
+                this.resizeContainer(150); // Compact - thumbnail view
                 break;
         }
     }
@@ -262,4 +304,11 @@ class CameraWidget {
 // Initialize the widget when page loads
 document.addEventListener('DOMContentLoaded', () => {
     new CameraWidget();
+});
+
+// Listen for messages from JotForm
+window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'resize') {
+        console.log('Received resize message:', event.data);
+    }
 });
