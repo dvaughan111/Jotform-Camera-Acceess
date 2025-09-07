@@ -15,7 +15,7 @@ class CameraWidget {
         this.setupEventListeners();
         
         // Set initial compact size
-        this.resizeContainer(100);
+        this.resizeContainer(75); // Changed from 100 to match your requirement
     }
 
     createInterface() {
@@ -103,53 +103,94 @@ class CameraWidget {
     resizeContainer(height) {
         console.log('Attempting to resize to:', height + 'px');
         
-        // Method 1: JotForm's official widget API
-        if (typeof JFCustomWidget !== 'undefined') {
-            try {
-                JFCustomWidget.resize(height);
-                console.log('Resized using JFCustomWidget API');
-                return true;
-            } catch (e) {
-                console.log('JFCustomWidget resize failed:', e);
+        // Add a small delay to ensure DOM is ready
+        setTimeout(() => {
+            let resizeSuccess = false;
+            
+            // Method 1: JotForm's official widget API (most reliable)
+            if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.resize) {
+                try {
+                    JFCustomWidget.resize(400, height); // width, height
+                    console.log('Resized using JFCustomWidget API to 400x' + height);
+                    resizeSuccess = true;
+                } catch (e) {
+                    console.log('JFCustomWidget resize failed:', e);
+                }
             }
-        }
-        
-        // Method 2: postMessage to parent (common widget pattern)
-        if (window.parent && window.parent !== window) {
-            try {
-                window.parent.postMessage({
-                    type: 'resize',
-                    height: height,
-                    widget: 'camera'
-                }, '*');
-                console.log('Resize message sent via postMessage');
-                return true;
-            } catch (e) {
-                console.log('postMessage resize failed:', e);
+            
+            // Method 2: postMessage to parent with multiple message formats
+            if (window.parent && window.parent !== window && !resizeSuccess) {
+                try {
+                    // JotForm specific message format
+                    window.parent.postMessage({
+                        type: 'setHeight',
+                        height: height
+                    }, '*');
+                    
+                    // Alternative format
+                    window.parent.postMessage({
+                        type: 'resize',
+                        width: 400,
+                        height: height
+                    }, '*');
+                    
+                    // Generic iframe resize message
+                    window.parent.postMessage({
+                        type: 'iframe-resize',
+                        height: height
+                    }, '*');
+                    
+                    console.log('Resize messages sent via postMessage');
+                    resizeSuccess = true;
+                } catch (e) {
+                    console.log('postMessage resize failed:', e);
+                }
             }
-        }
-        
-        // Method 3: Try to find and resize the iframe directly
-        try {
-            const iframe = window.frameElement;
-            if (iframe) {
-                iframe.style.height = height + 'px';
-                iframe.style.minHeight = height + 'px';
-                console.log('Resized iframe directly');
-                return true;
+            
+            // Method 3: Try to find and resize the iframe directly
+            if (!resizeSuccess) {
+                try {
+                    const iframe = window.frameElement;
+                    if (iframe) {
+                        iframe.style.height = height + 'px';
+                        iframe.style.minHeight = height + 'px';
+                        iframe.style.maxHeight = height + 'px';
+                        iframe.setAttribute('height', height);
+                        console.log('Resized iframe directly to', height + 'px');
+                        resizeSuccess = true;
+                    }
+                } catch (e) {
+                    console.log('Direct iframe resize failed:', e);
+                }
             }
-        } catch (e) {
-            console.log('Direct iframe resize failed:', e);
-        }
+            
+            // Method 4: Try to find parent iframe by class or id
+            if (!resizeSuccess && window.parent) {
+                try {
+                    window.parent.postMessage({
+                        action: 'resize',
+                        height: height,
+                        width: 400
+                    }, '*');
+                    console.log('Sent generic resize action');
+                } catch (e) {
+                    console.log('Generic resize action failed:', e);
+                }
+            }
+            
+            console.log(resizeSuccess ? 'Resize successful' : 'All resize methods attempted');
+        }, 50); // Small delay to ensure DOM updates
         
-        console.log('All resize methods failed');
-        return false;
+        return true;
     }
 
     async startCamera() {
         try {
             // Expand container FIRST before starting camera
             this.resizeContainer(400);
+            
+            // Small delay to let resize happen before camera starts
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
@@ -165,7 +206,7 @@ class CameraWidget {
         } catch (error) {
             console.error('Error accessing camera:', error);
             // Reset size on error
-            this.resizeContainer(100);
+            this.resizeContainer(75);
             alert('Could not access camera. Please make sure you have granted camera permissions.');
         }
     }
@@ -202,22 +243,24 @@ class CameraWidget {
         document.getElementById(state + '-state').style.display = 'block';
         this.currentState = state;
         
-        // Resize container based on state
-        switch(state) {
-            case 'initial':
-                this.resizeContainer(100); // Compact - just the button
-                break;
-            case 'camera':
-            case 'preview':
-                this.resizeContainer(400); // Expanded - camera view
-                break;
-            case 'uploading':
-                this.resizeContainer(120); // Medium - uploading message
-                break;
-            case 'thumbnail':
-                this.resizeContainer(150); // Compact - thumbnail view
-                break;
-        }
+        // Resize container based on state with appropriate delays
+        setTimeout(() => {
+            switch(state) {
+                case 'initial':
+                    this.resizeContainer(75); // Compact - just the button (your requirement)
+                    break;
+                case 'camera':
+                case 'preview':
+                    this.resizeContainer(400); // Expanded - camera view (your requirement)
+                    break;
+                case 'uploading':
+                    this.resizeContainer(120); // Medium - uploading message
+                    break;
+                case 'thumbnail':
+                    this.resizeContainer(75); // Back to compact after upload (shrink as requested)
+                    break;
+            }
+        }, 50);
     }
 
     approvePhoto() {
@@ -276,7 +319,7 @@ class CameraWidget {
                 window.open(this.uploadedImageUrl, '_blank');
             };
         }
-        this.showState('thumbnail');
+        this.showState('thumbnail'); // This will now shrink back to 75px
     }
 
     deletePhoto() {
@@ -306,9 +349,20 @@ document.addEventListener('DOMContentLoaded', () => {
     new CameraWidget();
 });
 
-// Listen for messages from JotForm
+// Enhanced message listener for JotForm communication
 window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'resize') {
-        console.log('Received resize message:', event.data);
+    console.log('Received message:', event.data);
+    
+    // Handle various JotForm messages
+    if (event.data && event.data.type) {
+        switch(event.data.type) {
+            case 'resize':
+            case 'setHeight':
+            case 'iframe-resize':
+                console.log('Resize acknowledgment received:', event.data);
+                break;
+            default:
+                console.log('Unknown message type:', event.data.type);
+        }
     }
 });
