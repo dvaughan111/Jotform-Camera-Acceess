@@ -14,21 +14,21 @@ class CameraWidget {
         this.createInterface();
         this.setupEventListeners();
         
-        // Set initial compact size
-        this.updateWidgetSize(120); // Compact height for just the button
+        // Set initial compact size using JotForm's API
+        this.setWidgetHeight(80);
     }
 
     createInterface() {
         const container = document.getElementById('camera-widget');
         container.innerHTML = `
             <div class="widget-container">
-                <div id="initial-state" class="state-container compact-view">
-                    <button id="start-camera-btn" class="primary-btn">
+                <div id="initial-state" class="state-container">
+                    <button id="start-camera-btn" class="primary-btn compact-btn">
                         📷 Take Photo
                     </button>
                 </div>
 
-                <div id="camera-state" class="state-container expanded-view" style="display: none;">
+                <div id="camera-state" class="state-container" style="display: none;">
                     <video id="camera-video" autoplay playsinline muted></video>
                     <div class="button-row">
                         <button id="capture-btn" class="primary-btn">📸 Capture</button>
@@ -36,7 +36,7 @@ class CameraWidget {
                     </div>
                 </div>
 
-                <div id="preview-state" class="state-container expanded-view" style="display: none;">
+                <div id="preview-state" class="state-container" style="display: none;">
                     <canvas id="photo-canvas"></canvas>
                     <div class="preview-actions">
                         <button id="approve-btn" class="success-btn">✓ Approve & Upload</button>
@@ -44,12 +44,12 @@ class CameraWidget {
                     </div>
                 </div>
 
-                <div id="uploading-state" class="state-container compact-view" style="display: none;">
+                <div id="uploading-state" class="state-container" style="display: none;">
                     <p class="uploading-text">Uploading photo...</p>
                     <div class="progress-bar"></div>
                 </div>
 
-                <div id="thumbnail-state" class="state-container compact-view" style="display: none;">
+                <div id="thumbnail-state" class="state-container" style="display: none;">
                     <p class="success-message">Your Photo:</p>
                     <div class="thumbnail-container">
                         <img id="uploaded-thumbnail" class="thumbnail-image" />
@@ -96,16 +96,38 @@ class CameraWidget {
         });
     }
 
-    updateWidgetSize(height) {
-        if (this.isInIframe && window.JFCustomWidget) {
-            window.JFCustomWidget.resize(height);
+    setWidgetHeight(height) {
+        // Use JotForm's official API to resize the widget
+        if (this.isInIframe) {
+            try {
+                // Method 1: JotForm's official API
+                if (typeof JFCustomWidget !== 'undefined') {
+                    JFCustomWidget.resize(height);
+                } 
+                // Method 2: postMessage API
+                else if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'resize',
+                        height: height
+                    }, '*');
+                }
+                // Method 3: Direct style manipulation (as fallback)
+                else {
+                    const iframe = window.frameElement;
+                    if (iframe) {
+                        iframe.style.height = height + 'px';
+                    }
+                }
+            } catch (error) {
+                console.log('Widget resize error:', error);
+            }
         }
     }
 
     async startCamera() {
         try {
             // Expand widget before starting camera
-            this.updateWidgetSize(400);
+            this.setWidgetHeight(450);
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
@@ -121,7 +143,7 @@ class CameraWidget {
         } catch (error) {
             console.error('Error accessing camera:', error);
             // Reset to compact size on error
-            this.updateWidgetSize(120);
+            this.setWidgetHeight(80);
             alert('Could not access camera. Please make sure you have granted camera permissions and are using a secure connection (HTTPS).');
         }
     }
@@ -161,17 +183,17 @@ class CameraWidget {
         // Update widget size based on state
         switch(state) {
             case 'initial':
-                this.updateWidgetSize(120); // Compact
+                this.setWidgetHeight(80); // Very compact
                 break;
             case 'camera':
             case 'preview':
-                this.updateWidgetSize(500); // Expanded for camera/preview
+                this.setWidgetHeight(450); // Expanded
                 break;
             case 'uploading':
-                this.updateWidgetSize(100); // Compact for uploading
+                this.setWidgetHeight(100); // Compact
                 break;
             case 'thumbnail':
-                this.updateWidgetSize(200); // Compact for thumbnail
+                this.setWidgetHeight(180); // Compact with thumbnail
                 break;
         }
     }
