@@ -30,7 +30,7 @@ class CameraWidget {
 
                 <div id="camera-state" class="state-container" style="display: none;">
                     <div class="video-container">
-                        <video id="camera-video" autoplay playsinline muted></video>
+                        <video id="camera-video" playsinline muted></video>
                     </div>
                     <div class="button-row">
                         <button id="capture-btn" class="primary-btn">📸 Capture</button>
@@ -103,7 +103,6 @@ class CameraWidget {
     resizeContainer(height) {
         console.log('Attempting to resize to:', height + 'px');
         
-        // Single reliable method for JotForm widgets
         setTimeout(() => {
             try {
                 // Method 1: Check if JFCustomWidget exists and has resize method
@@ -114,8 +113,6 @@ class CameraWidget {
                     } else if (typeof window.JFCustomWidget.requestFrameResize === 'function') {
                         window.JFCustomWidget.requestFrameResize(height);
                         console.log('Resized using JFCustomWidget.requestFrameResize()');
-                    } else {
-                        console.log('JFCustomWidget exists but no resize method found');
                     }
                 }
                 // Method 2: Try global JFCustomWidget
@@ -135,14 +132,6 @@ class CameraWidget {
                         height: height
                     }, '*');
                     console.log('Sent resize message to parent frame');
-                }
-                // Method 4: Direct iframe manipulation
-                else if (window.frameElement) {
-                    window.frameElement.style.height = height + 'px';
-                    console.log('Resized iframe element directly');
-                }
-                else {
-                    console.log('No resize method available');
                 }
             } catch (error) {
                 console.error('Resize error:', error);
@@ -167,7 +156,15 @@ class CameraWidget {
             });
             
             this.video.srcObject = stream;
-            this.showState('camera');
+            
+            // Manually start video playback since autoplay is restricted
+            this.video.play().then(() => {
+                console.log('Video started successfully');
+                this.showState('camera');
+            }).catch((playError) => {
+                console.warn('Autoplay prevented, but video stream is ready:', playError);
+                this.showState('camera');
+            });
             
         } catch (error) {
             console.error('Error accessing camera:', error);
@@ -195,6 +192,7 @@ class CameraWidget {
     stopCamera() {
         if (this.video.srcObject) {
             this.video.srcObject.getTracks().forEach(track => track.stop());
+            this.video.srcObject = null;
         }
     }
 
@@ -292,10 +290,52 @@ class CameraWidget {
         if (thumbnailImg && this.uploadedImageUrl) {
             thumbnailImg.src = this.uploadedImageUrl;
             thumbnailImg.onclick = () => {
-                window.open(this.uploadedImageUrl, '_blank');
+                // Open in same window instead of new tab to avoid popup restrictions
+                const img = new Image();
+                img.src = this.uploadedImageUrl;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
+                
+                const newWindow = window.open('', '_blank');
+                if (newWindow) {
+                    newWindow.document.body.appendChild(img);
+                } else {
+                    // Fallback: create modal-like view
+                    this.showImageModal(this.uploadedImageUrl);
+                }
             };
         }
         this.showState('thumbnail');
+    }
+
+    showImageModal(imageUrl) {
+        // Simple modal fallback for viewing image
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        `;
+        
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.style.cssText = `
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        `;
+        
+        modal.appendChild(img);
+        modal.onclick = () => modal.remove();
+        
+        document.body.appendChild(modal);
     }
 
     deletePhoto() {
