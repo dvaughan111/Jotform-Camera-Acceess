@@ -8,8 +8,30 @@ class CameraWidget {
         this.isInIframe = window.self !== window.top;
         this.uploadedImageUrl = null;
         this.uploadedFileName = null;
+        this.jfWidgetReady = false;
+        
         console.log('Is in iframe:', this.isInIframe);
-        this.init();
+        
+        // Wait for JotForm widget to be ready
+        this.waitForJotFormReady().then(() => {
+            this.init();
+        });
+    }
+
+    async waitForJotFormReady() {
+        console.log('Waiting for JotForm widget to be ready...');
+        
+        // Try multiple times to find JotForm widget API
+        for (let i = 0; i < 20; i++) {
+            if (typeof window.JFCustomWidget !== 'undefined' || typeof JFCustomWidget !== 'undefined') {
+                console.log('JotForm widget API found!');
+                this.jfWidgetReady = true;
+                return;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        console.log('JotForm widget API not found, proceeding anyway...');
     }
 
     init() {
@@ -19,7 +41,25 @@ class CameraWidget {
         
         // Set initial compact size
         this.resizeContainer(75);
+        
+        // Notify JotForm that widget is ready
+        this.notifyJotFormReady();
+        
         console.log('Widget initialized');
+    }
+
+    notifyJotFormReady() {
+        try {
+            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.ready) {
+                window.JFCustomWidget.ready();
+                console.log('Notified JotForm that widget is ready');
+            } else if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.ready) {
+                JFCustomWidget.ready();
+                console.log('Notified JotForm that widget is ready (global)');
+            }
+        } catch (e) {
+            console.log('Could not notify JotForm ready:', e);
+        }
     }
 
     createInterface() {
@@ -39,6 +79,7 @@ class CameraWidget {
                     <button id="start-camera-btn" class="primary-btn">
                         📷 Take Photo
                     </button>
+                    <p style="font-size: 12px; color: #666; margin-top: 10px;">Click to access camera</p>
                 </div>
 
                 <div id="camera-state" class="state-container" style="display: none;">
@@ -67,10 +108,10 @@ class CameraWidget {
                 </div>
 
                 <div id="thumbnail-state" class="state-container" style="display: none;">
-                    <p class="success-message">Your Photo:</p>
+                    <p class="success-message">Photo Uploaded!</p>
                     <div class="thumbnail-container">
-                        <img id="uploaded-thumbnail" class="thumbnail-image" />
-                        <button id="delete-thumbnail" class="delete-btn">✕</button>
+                        <img id="uploaded-thumbnail" class="thumbnail-image" alt="Captured photo" />
+                        <button id="delete-thumbnail" class="delete-btn" title="Delete photo">✕</button>
                     </div>
                     <button id="replace-photo-btn" class="secondary-btn">Replace Photo</button>
                 </div>
@@ -88,187 +129,197 @@ class CameraWidget {
     setupEventListeners() {
         console.log('Setting up event listeners...');
         
-        const startBtn = document.getElementById('start-camera-btn');
-        if (!startBtn) {
-            console.error('ERROR: start-camera-btn not found!');
-            return;
-        }
-        
-        startBtn.addEventListener('click', () => {
-            console.log('Start camera button clicked!');
-            this.startCamera();
+        // Use event delegation for more reliable event binding
+        document.addEventListener('click', (e) => {
+            console.log('Click detected on:', e.target.id, e.target.className);
+            
+            switch(e.target.id) {
+                case 'start-camera-btn':
+                    console.log('Start camera button clicked!');
+                    e.preventDefault();
+                    this.startCamera();
+                    break;
+                case 'capture-btn':
+                    console.log('Capture button clicked!');
+                    e.preventDefault();
+                    this.capturePhoto();
+                    break;
+                case 'cancel-btn':
+                    console.log('Cancel button clicked!');
+                    e.preventDefault();
+                    this.stopCamera();
+                    this.showState('initial');
+                    break;
+                case 'approve-btn':
+                    console.log('Approve button clicked!');
+                    e.preventDefault();
+                    this.approvePhoto();
+                    break;
+                case 'retake-btn':
+                    console.log('Retake button clicked!');
+                    e.preventDefault();
+                    this.showState('camera');
+                    break;
+                case 'replace-photo-btn':
+                    console.log('Replace photo button clicked!');
+                    e.preventDefault();
+                    this.showState('initial');
+                    break;
+                case 'delete-thumbnail':
+                    console.log('Delete thumbnail button clicked!');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.deletePhoto();
+                    break;
+            }
         });
-
-        const captureBtn = document.getElementById('capture-btn');
-        if (captureBtn) {
-            captureBtn.addEventListener('click', () => {
-                console.log('Capture button clicked!');
-                this.capturePhoto();
-            });
-        }
-
-        const cancelBtn = document.getElementById('cancel-btn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                console.log('Cancel button clicked!');
-                this.stopCamera();
-                this.showState('initial');
-            });
-        }
-
-        const approveBtn = document.getElementById('approve-btn');
-        if (approveBtn) {
-            approveBtn.addEventListener('click', () => {
-                console.log('Approve button clicked!');
-                this.approvePhoto();
-            });
-        }
-
-        const retakeBtn = document.getElementById('retake-btn');
-        if (retakeBtn) {
-            retakeBtn.addEventListener('click', () => {
-                console.log('Retake button clicked!');
-                this.showState('camera');
-            });
-        }
-
-        const replaceBtn = document.getElementById('replace-photo-btn');
-        if (replaceBtn) {
-            replaceBtn.addEventListener('click', () => {
-                console.log('Replace photo button clicked!');
-                this.showState('initial');
-            });
-        }
-
-        const deleteBtn = document.getElementById('delete-thumbnail');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', (e) => {
-                console.log('Delete thumbnail button clicked!');
-                e.stopPropagation();
-                this.deletePhoto();
-            });
-        }
         
         console.log('Event listeners set up successfully');
     }
 
     resizeContainer(height) {
-        console.log('=== RESIZE ATTEMPT ===');
-        console.log('Attempting to resize to:', height + 'px');
-        console.log('JFCustomWidget available:', typeof window.JFCustomWidget !== 'undefined');
-        console.log('Global JFCustomWidget available:', typeof JFCustomWidget !== 'undefined');
+        console.log('=== RESIZE ATTEMPT to', height + 'px ===');
         
-        setTimeout(() => {
-            let resizeAttempted = false;
-            
+        // Use requestAnimationFrame for smoother resizing
+        requestAnimationFrame(() => {
             try {
-                // Method 1: Check window.JFCustomWidget
+                let success = false;
+                
+                // Method 1: JotForm widget API
                 if (typeof window.JFCustomWidget !== 'undefined') {
-                    console.log('Found window.JFCustomWidget:', window.JFCustomWidget);
-                    if (typeof window.JFCustomWidget.resize === 'function') {
+                    console.log('Using window.JFCustomWidget');
+                    if (window.JFCustomWidget.resize) {
                         window.JFCustomWidget.resize(height);
-                        console.log('✓ Resized using window.JFCustomWidget.resize()');
-                        resizeAttempted = true;
-                    } else if (typeof window.JFCustomWidget.requestFrameResize === 'function') {
+                        console.log('✅ Resized via window.JFCustomWidget.resize');
+                        success = true;
+                    } else if (window.JFCustomWidget.requestFrameResize) {
                         window.JFCustomWidget.requestFrameResize(height);
-                        console.log('✓ Resized using window.JFCustomWidget.requestFrameResize()');
-                        resizeAttempted = true;
-                    } else {
-                        console.log('window.JFCustomWidget methods:', Object.keys(window.JFCustomWidget));
+                        console.log('✅ Resized via window.JFCustomWidget.requestFrameResize');
+                        success = true;
                     }
-                }
-                
-                // Method 2: Check global JFCustomWidget
-                if (!resizeAttempted && typeof JFCustomWidget !== 'undefined') {
-                    console.log('Found global JFCustomWidget:', JFCustomWidget);
-                    if (typeof JFCustomWidget.resize === 'function') {
+                } else if (typeof JFCustomWidget !== 'undefined') {
+                    console.log('Using global JFCustomWidget');
+                    if (JFCustomWidget.resize) {
                         JFCustomWidget.resize(height);
-                        console.log('✓ Resized using global JFCustomWidget.resize()');
-                        resizeAttempted = true;
-                    } else if (typeof JFCustomWidget.requestFrameResize === 'function') {
+                        console.log('✅ Resized via JFCustomWidget.resize');
+                        success = true;
+                    } else if (JFCustomWidget.requestFrameResize) {
                         JFCustomWidget.requestFrameResize(height);
-                        console.log('✓ Resized using global JFCustomWidget.requestFrameResize()');
-                        resizeAttempted = true;
-                    } else {
-                        console.log('Global JFCustomWidget methods:', Object.keys(JFCustomWidget));
+                        console.log('✅ Resized via JFCustomWidget.requestFrameResize');
+                        success = true;
                     }
                 }
                 
-                // Method 3: PostMessage fallback
-                if (!resizeAttempted && window.parent && window.parent !== window) {
-                    console.log('Attempting postMessage resize...');
-                    window.parent.postMessage({
-                        type: 'setHeight',
-                        height: height
-                    }, '*');
-                    console.log('✓ Sent resize message to parent frame');
-                    resizeAttempted = true;
+                // Method 2: PostMessage to parent
+                if (!success && window.parent && window.parent !== window) {
+                    const messages = [
+                        { type: 'widget-resize', height: height },
+                        { type: 'setHeight', height: height },
+                        { type: 'resize', height: height },
+                        { action: 'resize', height: height }
+                    ];
+                    
+                    messages.forEach(msg => {
+                        try {
+                            window.parent.postMessage(msg, '*');
+                        } catch (e) {
+                            console.log('PostMessage failed:', e);
+                        }
+                    });
+                    
+                    console.log('📤 Sent resize messages to parent');
+                    success = true;
                 }
                 
-                if (!resizeAttempted) {
-                    console.log('⚠️ No resize method available');
+                // Method 3: Direct iframe manipulation
+                if (!success) {
+                    try {
+                        if (window.frameElement) {
+                            window.frameElement.style.height = height + 'px';
+                            console.log('✅ Direct iframe resize');
+                            success = true;
+                        }
+                    } catch (e) {
+                        console.log('Direct iframe resize failed:', e);
+                    }
                 }
+                
+                console.log(success ? '✅ Resize completed' : '❌ All resize methods failed');
                 
             } catch (error) {
                 console.error('❌ Resize error:', error);
             }
-            
-            console.log('=== END RESIZE ATTEMPT ===');
-        }, 100);
+        });
     }
 
     async startCamera() {
         console.log('=== START CAMERA ===');
         
         try {
-            // Check if getUserMedia is available
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('Camera API not supported');
-            }
-            
-            console.log('Expanding container...');
+            // First, expand the container
+            console.log('Expanding container to 400px...');
             this.resizeContainer(400);
             
-            console.log('Waiting for resize...');
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // Show camera state immediately for better UX
+            this.showState('camera');
+            
+            // Wait a bit for resize
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Check camera support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Camera not supported on this device/browser');
+            }
             
             console.log('Requesting camera access...');
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: 'environment',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                } 
-            });
             
-            console.log('Camera stream obtained:', stream);
-            console.log('Video element:', this.video);
+            // Request camera with mobile-optimized constraints
+            const constraints = {
+                video: {
+                    facingMode: { ideal: 'environment' }, // Prefer back camera
+                    width: { ideal: 1280, max: 1920 },
+                    height: { ideal: 720, max: 1080 }
+                },
+                audio: false
+            };
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            console.log('✅ Camera stream obtained');
             
             if (!this.video) {
                 throw new Error('Video element not found');
             }
             
             this.video.srcObject = stream;
-            console.log('Stream assigned to video element');
             
-            // Try to play the video
-            try {
-                await this.video.play();
-                console.log('✓ Video playing successfully');
-            } catch (playError) {
-                console.warn('Video play error (may be normal):', playError);
-            }
+            // Handle video loading
+            this.video.onloadedmetadata = () => {
+                console.log('Video metadata loaded:', this.video.videoWidth + 'x' + this.video.videoHeight);
+                this.video.play().catch(e => {
+                    console.warn('Video play failed (may be normal):', e);
+                });
+            };
             
-            console.log('Showing camera state...');
-            this.showState('camera');
+            this.video.onerror = (e) => {
+                console.error('Video error:', e);
+            };
             
         } catch (error) {
-            console.error('❌ Camera error:', error);
+            console.error('❌ Camera error:', error.name, error.message);
+            
+            // Show user-friendly error message
+            const errorMsg = error.name === 'NotAllowedError' ? 
+                'Camera access denied. Please allow camera permissions and try again.' :
+                error.name === 'NotFoundError' ?
+                'No camera found on this device.' :
+                'Camera error: ' + error.message;
+                
+            alert(errorMsg);
+            
+            // Reset to initial state
             this.resizeContainer(75);
-            alert('Could not access camera: ' + error.message);
+            this.showState('initial');
         }
-        
-        console.log('=== END START CAMERA ===');
     }
 
     capturePhoto() {
@@ -276,40 +327,57 @@ class CameraWidget {
         
         if (!this.video || !this.canvas) {
             console.error('Video or canvas not available');
+            alert('Cannot capture photo. Please try again.');
             return;
         }
         
-        console.log('Video dimensions:', this.video.videoWidth, 'x', this.video.videoHeight);
+        if (this.video.videoWidth === 0 || this.video.videoHeight === 0) {
+            console.error('Video not ready');
+            alert('Video not ready. Please wait a moment and try again.');
+            return;
+        }
+        
+        console.log('Video dimensions:', this.video.videoWidth + 'x' + this.video.videoHeight);
         
         const context = this.canvas.getContext('2d');
         
+        // Set canvas size to match video
         this.canvas.width = this.video.videoWidth;
         this.canvas.height = this.video.videoHeight;
         
+        // Draw the video frame to canvas
         context.drawImage(this.video, 0, 0);
         
+        // Convert to blob
         this.canvas.toBlob((blob) => {
-            console.log('Photo captured, blob size:', blob.size);
+            if (!blob) {
+                console.error('Failed to create image blob');
+                alert('Failed to capture photo. Please try again.');
+                return;
+            }
+            
+            console.log('✅ Photo captured, blob size:', blob.size, 'bytes');
             this.capturedImageData = blob;
             this.stopCamera();
             this.showState('preview');
-        }, 'image/jpeg', 0.85);
+        }, 'image/jpeg', 0.9);
     }
 
     stopCamera() {
         console.log('Stopping camera...');
         if (this.video && this.video.srcObject) {
-            this.video.srcObject.getTracks().forEach(track => {
+            const tracks = this.video.srcObject.getTracks();
+            tracks.forEach(track => {
                 console.log('Stopping track:', track.kind);
                 track.stop();
             });
             this.video.srcObject = null;
-            console.log('Camera stopped');
+            console.log('✅ Camera stopped');
         }
     }
 
     showState(state) {
-        console.log('=== SHOW STATE:', state, '===');
+        console.log('=== SHOW STATE:', state.toUpperCase(), '===');
         
         // Hide all states
         const states = ['initial', 'camera', 'preview', 'uploading', 'thumbnail'];
@@ -317,193 +385,237 @@ class CameraWidget {
             const element = document.getElementById(s + '-state');
             if (element) {
                 element.style.display = 'none';
-                console.log('Hidden state:', s);
-            } else {
-                console.warn('State element not found:', s + '-state');
             }
         });
         
-        // Show requested state
+        // Show target state
         const targetElement = document.getElementById(state + '-state');
         if (targetElement) {
             targetElement.style.display = 'block';
-            console.log('Shown state:', state);
+            console.log('✅ State shown:', state);
         } else {
-            console.error('Target state element not found:', state + '-state');
+            console.error('❌ State element not found:', state + '-state');
+            return;
         }
         
         this.currentState = state;
         
-        // Resize container based on state
+        // Resize based on state
         setTimeout(() => {
-            switch(state) {
-                case 'initial':
-                    console.log('Resizing for initial state');
-                    this.resizeContainer(75);
-                    break;
-                case 'camera':
-                case 'preview':
-                    console.log('Resizing for camera/preview state');
-                    this.resizeContainer(400);
-                    break;
-                case 'uploading':
-                    console.log('Resizing for uploading state');
-                    this.resizeContainer(120);
-                    break;
-                case 'thumbnail':
-                    console.log('Resizing for thumbnail state');
-                    this.resizeContainer(75);
-                    break;
-            }
+            const heights = {
+                'initial': 75,
+                'camera': 400,
+                'preview': 400,
+                'uploading': 120,
+                'thumbnail': 75
+            };
+            
+            const height = heights[state] || 75;
+            console.log(`Resizing for ${state} state to ${height}px`);
+            this.resizeContainer(height);
         }, 100);
-        
-        console.log('=== END SHOW STATE ===');
     }
 
     approvePhoto() {
-        console.log('Approving photo...');
+        console.log('=== APPROVE PHOTO ===');
         this.showState('uploading');
-        this.uploadToJotForm();
+        setTimeout(() => this.uploadToJotForm(), 500);
     }
 
     uploadToJotForm() {
         console.log('=== UPLOAD TO JOTFORM ===');
         
+        if (!this.capturedImageData) {
+            console.error('No image data to upload');
+            this.showState('preview');
+            return;
+        }
+        
         try {
             const reader = new FileReader();
             reader.onloadend = () => {
                 const base64data = reader.result;
-                const fileName = 'photo-' + Date.now() + '.jpg';
+                const fileName = 'camera-photo-' + Date.now() + '.jpg';
+                
+                console.log('📁 File prepared:', fileName);
+                console.log('📊 Data size:', Math.round(base64data.length / 1024) + 'KB');
+                
+                // Submit to JotForm
+                this.submitToJotForm(base64data, fileName);
+                
+                // Create thumbnail URL
+                this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
                 this.uploadedFileName = fileName;
                 
-                console.log('File prepared:', fileName, 'Size:', base64data.length);
+                console.log('✅ Upload process completed');
                 
-                // Check for JFCustomWidget
-                if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
-                    console.log('Submitting via window.JFCustomWidget');
-                    window.JFCustomWidget.submit({
-                        type: 'file',
-                        data: {
-                            file: base64data,
-                            filename: fileName
-                        }
-                    });
-                } else if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.submit) {
-                    console.log('Submitting via global JFCustomWidget');
-                    JFCustomWidget.submit({
-                        type: 'file',
-                        data: {
-                            file: base64data,
-                            filename: fileName
-                        }
-                    });
-                } else {
-                    console.log('⚠️ JFCustomWidget not available - testing mode');
-                }
-                
-                this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
-                console.log('Upload complete, showing thumbnail...');
-                this.showThumbnail();
+                // Show thumbnail after delay
+                setTimeout(() => {
+                    this.showThumbnail();
+                }, 1000);
             };
             
             reader.onerror = (error) => {
-                console.error('FileReader error:', error);
+                console.error('❌ FileReader error:', error);
                 alert('Error processing photo. Please try again.');
                 this.showState('preview');
             };
             
             reader.readAsDataURL(this.capturedImageData);
+            
         } catch (error) {
-            console.error('❌ Upload error:', error);
+            console.error('❌ Upload preparation error:', error);
             alert('Upload failed. Please try again.');
             this.showState('preview');
         }
     }
 
+    submitToJotForm(base64data, fileName) {
+        try {
+            const fileData = {
+                type: 'file',
+                data: {
+                    file: base64data,
+                    filename: fileName
+                }
+            };
+            
+            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
+                console.log('📤 Submitting via window.JFCustomWidget');
+                window.JFCustomWidget.submit(fileData);
+            } else if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.submit) {
+                console.log('📤 Submitting via global JFCustomWidget');
+                JFCustomWidget.submit(fileData);
+            } else {
+                console.log('⚠️ JotForm API not available - running in test mode');
+                // In test mode, we still show success
+            }
+            
+        } catch (error) {
+            console.error('❌ JotForm submission error:', error);
+        }
+    }
+
     showThumbnail() {
-        console.log('Showing thumbnail...');
+        console.log('=== SHOW THUMBNAIL ===');
+        
         const thumbnailImg = document.getElementById('uploaded-thumbnail');
         if (thumbnailImg && this.uploadedImageUrl) {
             thumbnailImg.src = this.uploadedImageUrl;
-            thumbnailImg.onclick = () => {
-                console.log('Thumbnail clicked');
-                window.open(this.uploadedImageUrl, '_blank');
+            thumbnailImg.onload = () => {
+                console.log('✅ Thumbnail loaded');
             };
-            console.log('Thumbnail set up');
+            thumbnailImg.onclick = () => {
+                console.log('🖼️ Thumbnail clicked - opening full view');
+                this.openImageFullView();
+            };
         }
+        
         this.showState('thumbnail');
     }
 
+    openImageFullView() {
+        // Try to open in new window/tab
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+            newWindow.document.write(`
+                <html>
+                    <head><title>Captured Photo</title></head>
+                    <body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#000;">
+                        <img src="${this.uploadedImageUrl}" style="max-width:100%; max-height:100vh; object-fit:contain;" alt="Captured photo">
+                    </body>
+                </html>
+            `);
+        } else {
+            // Fallback: show inline modal
+            this.showInlineImageModal();
+        }
+    }
+
+    showInlineImageModal() {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center;
+            z-index: 10000; cursor: pointer;
+        `;
+        
+        const img = document.createElement('img');
+        img.src = this.uploadedImageUrl;
+        img.style.cssText = 'max-width: 95%; max-height: 95%; object-fit: contain;';
+        
+        modal.appendChild(img);
+        modal.onclick = () => modal.remove();
+        
+        document.body.appendChild(modal);
+    }
+
     deletePhoto() {
-        console.log('Delete photo requested');
+        console.log('=== DELETE PHOTO ===');
+        
         if (confirm('Are you sure you want to delete this photo?')) {
+            // Clean up URLs
             if (this.uploadedImageUrl) {
                 URL.revokeObjectURL(this.uploadedImageUrl);
             }
             
-            // Clear the data
-            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
-                window.JFCustomWidget.submit({
-                    type: 'file',
-                    data: null
-                });
-            } else if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.submit) {
-                JFCustomWidget.submit({
-                    type: 'file',
-                    data: null
-                });
-            }
+            // Submit null data to JotForm
+            this.submitToJotForm(null, null);
             
+            // Reset data
             this.uploadedImageUrl = null;
             this.uploadedFileName = null;
             this.capturedImageData = null;
             
-            console.log('Photo deleted, returning to initial state');
+            console.log('✅ Photo deleted');
             this.showState('initial');
         }
     }
 }
 
-// Wait for DOM and initialize
-console.log('Script loaded, waiting for DOM...');
+// Initialize when ready
+console.log('🚀 Camera widget script loaded');
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing CameraWidget...');
+function initializeWidget() {
+    console.log('🔍 Checking for container...');
+    const container = document.getElementById('camera-widget');
     
-    // Check if the container exists
-    const container = document.getElementById('camera-widget');
-    if (container) {
-        console.log('Container found, creating widget...');
-        window.cameraWidget = new CameraWidget(); // Make it globally accessible for debugging
-    } else {
-        console.error('❌ ERROR: #camera-widget element not found in DOM!');
-        console.log('Available elements with IDs:', 
-            Array.from(document.querySelectorAll('[id]')).map(el => el.id)
-        );
-    }
-});
-
-// Also try immediate initialization in case DOM is already loaded
-if (document.readyState === 'loading') {
-    console.log('DOM still loading, waiting...');
-} else {
-    console.log('DOM already loaded, trying immediate initialization...');
-    const container = document.getElementById('camera-widget');
     if (container && !window.cameraWidget) {
-        console.log('Container found, creating widget immediately...');
+        console.log('✅ Container found, initializing widget...');
         window.cameraWidget = new CameraWidget();
+    } else if (!container) {
+        console.log('❌ Container not found yet...');
+    } else {
+        console.log('⚠️ Widget already initialized');
     }
 }
 
-// Listen for messages from JotForm
+// Try multiple initialization methods
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWidget);
+} else {
+    initializeWidget();
+}
+
+// Also try after a short delay in case of timing issues
+setTimeout(initializeWidget, 100);
+setTimeout(initializeWidget, 500);
+
+// Message listener
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type) {
         console.log('📨 Received message:', event.data);
     }
 });
 
-// Log global objects for debugging
-console.log('Window objects check:');
-console.log('- JFCustomWidget:', typeof JFCustomWidget !== 'undefined' ? JFCustomWidget : 'undefined');
-console.log('- window.JFCustomWidget:', typeof window.JFCustomWidget !== 'undefined' ? window.JFCustomWidget : 'undefined');
-console.log('- navigator.mediaDevices:', navigator.mediaDevices ? 'available' : 'not available');
+// Expose for debugging
+window.debugCamera = () => {
+    console.log('🐛 Debug info:');
+    console.log('- Widget instance:', window.cameraWidget);
+    console.log('- Container:', document.getElementById('camera-widget'));
+    console.log('- JFCustomWidget:', typeof JFCustomWidget !== 'undefined' ? JFCustomWidget : 'undefined');
+    console.log('- window.JFCustomWidget:', typeof window.JFCustomWidget !== 'undefined' ? window.JFCustomWidget : 'undefined');
+    console.log('- Camera API:', navigator.mediaDevices ? 'available' : 'not available');
+};
+
+console.log('📋 Run window.debugCamera() in console for debug info');
