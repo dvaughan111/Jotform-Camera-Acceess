@@ -27,7 +27,7 @@ class CameraWidget {
 
                 <div id="camera-state" class="state-container" style="display: none;">
                     <div class="video-container">
-                        <video id="camera-video" playsinline muted></video>
+                        <video id="camera-video" autoplay playsinline muted></video>
                     </div>
                     <div class="button-row">
                         <button id="capture-btn" class="primary-btn">📸 Capture</button>
@@ -97,8 +97,18 @@ class CameraWidget {
         });
     }
 
+    resizeWidget(height) {
+        // Use JotForm's API to resize the widget container
+        if (this.isInIframe && typeof JFCustomWidget !== 'undefined') {
+            JFCustomWidget.resize(height);
+        }
+    }
+
     async startCamera() {
         try {
+            // Expand container to 400px height for camera view
+            this.resizeWidget(400);
+            
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     facingMode: 'environment',
@@ -108,24 +118,19 @@ class CameraWidget {
             });
             
             this.video.srcObject = stream;
-            
-            // Manually play the video after user interaction
-            this.video.play().catch(e => {
-                console.log("Video play failed, but camera is accessible:", e);
-            });
-            
             this.showState('camera');
             
         } catch (error) {
             console.error('Error accessing camera:', error);
-            alert('Could not access camera. Please make sure you have granted camera permissions and are using a secure connection (HTTPS).');
+            // Reset to compact size on error
+            this.resizeWidget(100);
+            alert('Could not access camera. Please make sure you have granted camera permissions.');
         }
     }
 
     capturePhoto() {
         const context = this.canvas.getContext('2d');
         
-        // Set canvas size to match video
         this.canvas.width = this.video.videoWidth;
         this.canvas.height = this.video.videoHeight;
         
@@ -154,6 +159,23 @@ class CameraWidget {
         // Show requested state
         document.getElementById(state + '-state').style.display = 'block';
         this.currentState = state;
+        
+        // Resize container based on state
+        switch(state) {
+            case 'initial':
+                this.resizeWidget(100); // Compact size for button only
+                break;
+            case 'camera':
+            case 'preview':
+                this.resizeWidget(400); // Expanded size for camera/preview
+                break;
+            case 'uploading':
+                this.resizeWidget(120); // Medium size for uploading
+                break;
+            case 'thumbnail':
+                this.resizeWidget(180); // Compact size for thumbnail
+                break;
+        }
     }
 
     approvePhoto() {
@@ -169,7 +191,6 @@ class CameraWidget {
                 const fileName = 'photo-' + Date.now() + '.jpg';
                 this.uploadedFileName = fileName;
                 
-                // Use JotForm's widget API to submit the file
                 if (window.JFCustomWidget) {
                     window.JFCustomWidget.submit({
                         type: 'file',
