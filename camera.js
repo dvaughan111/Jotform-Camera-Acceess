@@ -1,6 +1,8 @@
-console.log('🚀 Simple Camera Widget Loading...');
+console.log('🚀 Camera Widget Loading...');
 
-// Simple initialization without complex timing
+let currentStream = null;
+let uploadedPhotos = []; // Array to store multiple photos
+
 function initCameraWidget() {
     console.log('📍 initCameraWidget called');
     
@@ -12,7 +14,7 @@ function initCameraWidget() {
     
     console.log('✅ Container found:', container);
     
-    // Create the interface directly
+    // Create the interface with improved thumbnail view
     container.innerHTML = `
         <div class="widget-container" style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px;">
             <div id="initial-state" style="display: block;">
@@ -49,21 +51,25 @@ function initCameraWidget() {
             </div>
             
             <div id="thumbnail-state" style="display: none;">
-                <p style="color: green; font-weight: bold;">Photo uploaded!</p>
-                <img id="uploaded-thumbnail" style="width: 150px; height: 150px; object-fit: cover; border-radius: 5px; cursor: pointer;" alt="Thumbnail"><br>
-                <button id="replace-photo-btn" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-top: 10px;">Replace Photo</button>
+                <p style="color: green; font-weight: bold;">Photo uploaded successfully!</p>
+                <div style="margin: 15px 0;">
+                    <img id="uploaded-thumbnail" style="width: 150px; height: 150px; object-fit: cover; border-radius: 5px; cursor: pointer; border: 2px solid #28a745;" alt="Thumbnail">
+                </div>
+                <div style="margin: 15px 0;">
+                    <button id="replace-photo-btn" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">Replace This Photo</button>
+                    <button id="add-another-btn" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">📷 Add Another Photo</button>
+                </div>
+                <div id="uploaded-photos-container" style="margin-top: 20px; display: none;">
+                    <h4 style="margin-bottom: 10px;">Your Uploaded Photos:</h4>
+                    <div id="uploaded-photos-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
+                </div>
             </div>
         </div>
     `;
     
     console.log('✅ Interface created');
-    
-    // Set up click handlers using simple approach
     setupClickHandlers();
-    
-    // Try to resize
     resizeWidget(75);
-    
     console.log('✅ Widget setup complete');
 }
 
@@ -78,9 +84,6 @@ function setupClickHandlers() {
             e.preventDefault();
             startCamera();
         };
-        console.log('✅ Start button handler set');
-    } else {
-        console.error('❌ Start button not found');
     }
     
     // Capture button
@@ -91,7 +94,6 @@ function setupClickHandlers() {
             e.preventDefault();
             capturePhoto();
         };
-        console.log('✅ Capture button handler set');
     }
     
     // Cancel button
@@ -103,7 +105,6 @@ function setupClickHandlers() {
             stopCamera();
             showState('initial');
         };
-        console.log('✅ Cancel button handler set');
     }
     
     // Approve button
@@ -114,7 +115,6 @@ function setupClickHandlers() {
             e.preventDefault();
             approvePhoto();
         };
-        console.log('✅ Approve button handler set');
     }
     
     // Retake button
@@ -125,7 +125,6 @@ function setupClickHandlers() {
             e.preventDefault();
             showState('camera');
         };
-        console.log('✅ Retake button handler set');
     }
     
     // Replace button
@@ -134,9 +133,23 @@ function setupClickHandlers() {
         replaceBtn.onclick = function(e) {
             console.log('🎯 REPLACE CLICKED!');
             e.preventDefault();
+            // Remove the current photo and go back to camera
+            if (uploadedPhotos.length > 0) {
+                uploadedPhotos.pop(); // Remove the last photo
+                updateUploadedPhotosDisplay();
+            }
             showState('initial');
         };
-        console.log('✅ Replace button handler set');
+    }
+    
+    // Add Another button
+    const addAnotherBtn = document.getElementById('add-another-btn');
+    if (addAnotherBtn) {
+        addAnotherBtn.onclick = function(e) {
+            console.log('🎯 ADD ANOTHER CLICKED!');
+            e.preventDefault();
+            showState('initial');
+        };
     }
 }
 
@@ -145,31 +158,31 @@ function showState(stateName) {
     
     const states = ['initial', 'camera', 'preview', 'uploading', 'thumbnail'];
     
-    // Hide all states
     states.forEach(state => {
         const element = document.getElementById(state + '-state');
         if (element) {
             element.style.display = 'none';
-            console.log('Hidden:', state);
         }
     });
     
-    // Show target state
     const targetElement = document.getElementById(stateName + '-state');
     if (targetElement) {
         targetElement.style.display = 'block';
         console.log('✅ Shown:', stateName);
-    } else {
-        console.error('❌ Target state not found:', stateName);
     }
     
-    // Resize based on state
+    // Show/hide uploaded photos container based on whether we have multiple photos
+    const photosContainer = document.getElementById('uploaded-photos-container');
+    if (photosContainer) {
+        photosContainer.style.display = uploadedPhotos.length > 1 ? 'block' : 'none';
+    }
+    
     const heights = {
         'initial': 75,
         'camera': 400,
         'preview': 400,
         'uploading': 120,
-        'thumbnail': 150
+        'thumbnail': uploadedPhotos.length > 1 ? 300 : 200 // Dynamic height based on number of photos
     };
     
     resizeWidget(heights[stateName] || 75);
@@ -180,27 +193,20 @@ function resizeWidget(height) {
     
     setTimeout(() => {
         try {
-            // Try JotForm methods
             if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.resize) {
                 window.JFCustomWidget.resize(height);
-                console.log('✅ Resized via window.JFCustomWidget.resize');
                 return;
             }
             
             if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.resize) {
                 JFCustomWidget.resize(height);
-                console.log('✅ Resized via JFCustomWidget.resize');
                 return;
             }
             
-            // PostMessage fallback
             if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ type: 'setHeight', height: height }, '*');
-                console.log('✅ Sent resize message via postMessage');
                 return;
             }
-            
-            console.log('⚠️ No resize method worked');
             
         } catch (e) {
             console.error('❌ Resize error:', e);
@@ -208,28 +214,14 @@ function resizeWidget(height) {
     }, 100);
 }
 
-let currentStream = null;
-
 async function startCamera() {
     console.log('📍 startCamera called');
     
     try {
-        console.log('🔍 Checking camera API...');
-        
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Camera API not supported');
-        }
-        
-        console.log('📏 Resizing to 400px...');
         resizeWidget(400);
-        
-        console.log('🎬 Showing camera state...');
         showState('camera');
         
-        console.log('⏳ Waiting 500ms...');
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        console.log('📹 Requesting camera access...');
         
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
@@ -240,7 +232,6 @@ async function startCamera() {
         });
         
         currentStream = stream;
-        console.log('✅ Camera stream obtained');
         
         const video = document.getElementById('camera-video');
         if (!video) {
@@ -250,11 +241,8 @@ async function startCamera() {
         video.srcObject = stream;
         
         video.onloadedmetadata = () => {
-            console.log('✅ Video metadata loaded');
-            video.play().catch(e => console.log('Video play issue (normal):', e));
+            video.play().catch(e => console.log('Video play issue:', e));
         };
-        
-        console.log('✅ Camera started successfully');
         
     } catch (error) {
         console.error('❌ Camera error:', error);
@@ -268,18 +256,13 @@ function stopCamera() {
     console.log('📍 stopCamera called');
     
     if (currentStream) {
-        currentStream.getTracks().forEach(track => {
-            track.stop();
-            console.log('Stopped track:', track.kind);
-        });
+        currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
         
         const video = document.getElementById('camera-video');
         if (video) {
             video.srcObject = null;
         }
-        
-        console.log('✅ Camera stopped');
     }
 }
 
@@ -295,23 +278,17 @@ function capturePhoto() {
     }
     
     if (video.videoWidth === 0 || video.videoHeight === 0) {
-        console.error('❌ Video not ready');
         alert('Video not ready. Please wait and try again.');
         return;
     }
     
-    console.log('📸 Capturing photo...');
-    
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
     context.drawImage(video, 0, 0);
     
     stopCamera();
     showState('preview');
-    
-    console.log('✅ Photo captured');
 }
 
 function approvePhoto() {
@@ -319,7 +296,6 @@ function approvePhoto() {
     
     showState('uploading');
     
-    // Simulate upload
     setTimeout(() => {
         const canvas = document.getElementById('photo-canvas');
         if (canvas) {
@@ -331,7 +307,17 @@ function approvePhoto() {
                     thumbnail.onclick = () => window.open(url, '_blank');
                 }
                 
-                // Try to submit to JotForm
+                // Add to uploaded photos array
+                uploadedPhotos.push({
+                    url: url,
+                    blob: blob,
+                    timestamp: Date.now()
+                });
+                
+                // Update the display of all uploaded photos
+                updateUploadedPhotosDisplay();
+                
+                // Submit to JotForm
                 const fileName = 'photo-' + Date.now() + '.jpg';
                 const reader = new FileReader();
                 reader.onload = () => {
@@ -344,9 +330,6 @@ function approvePhoto() {
                                     filename: fileName
                                 }
                             });
-                            console.log('✅ Submitted to JotForm');
-                        } else {
-                            console.log('⚠️ JotForm API not available');
                         }
                     } catch (e) {
                         console.error('❌ Submit error:', e);
@@ -355,50 +338,98 @@ function approvePhoto() {
                 reader.readAsDataURL(blob);
                 
                 showState('thumbnail');
-                console.log('✅ Photo approved and uploaded');
+                
             }, 'image/jpeg', 0.8);
         }
     }, 1500);
 }
 
-// Initialize immediately
-console.log('🎬 Starting initialization...');
+function updateUploadedPhotosDisplay() {
+    const photosList = document.getElementById('uploaded-photos-list');
+    const photosContainer = document.getElementById('uploaded-photos-container');
+    
+    if (!photosList || !photosContainer) return;
+    
+    // Clear existing photos
+    photosList.innerHTML = '';
+    
+    // Add each uploaded photo
+    uploadedPhotos.forEach((photo, index) => {
+        const photoElement = document.createElement('div');
+        photoElement.style.position = 'relative';
+        photoElement.style.cursor = 'pointer';
+        
+        photoElement.innerHTML = `
+            <img src="${photo.url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 5px; border: 2px solid #007bff;">
+            <button onclick="removePhoto(${index})" style="
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+                cursor: pointer;
+            ">✕</button>
+        `;
+        
+        photoElement.onclick = () => window.open(photo.url, '_blank');
+        photosList.appendChild(photoElement);
+    });
+    
+    // Show container if we have multiple photos
+    photosContainer.style.display = uploadedPhotos.length > 1 ? 'block' : 'none';
+    
+    // Adjust container height based on number of photos
+    const thumbnailState = document.getElementById('thumbnail-state');
+    if (thumbnailState && thumbnailState.style.display === 'block') {
+        const newHeight = uploadedPhotos.length > 1 ? 350 : 200;
+        resizeWidget(newHeight);
+    }
+}
 
-// Try multiple times
+// Global function to remove photos
+window.removePhoto = function(index) {
+    if (confirm('Are you sure you want to remove this photo?')) {
+        // Revoke the object URL to free memory
+        URL.revokeObjectURL(uploadedPhotos[index].url);
+        uploadedPhotos.splice(index, 1);
+        updateUploadedPhotosDisplay();
+        
+        // If no photos left, go back to initial state
+        if (uploadedPhotos.length === 0) {
+            showState('initial');
+        }
+    }
+};
+
+// Initialize the widget
 function tryInit() {
     const container = document.getElementById('camera-widget');
     if (container) {
-        console.log('✅ Container found, initializing...');
         initCameraWidget();
         return true;
     }
     return false;
 }
 
-// Try now
 if (!tryInit()) {
-    // Try when DOM ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', tryInit);
     }
-    
-    // Try after delays
     setTimeout(tryInit, 100);
     setTimeout(tryInit, 500);
-    setTimeout(tryInit, 1000);
 }
 
 // Debug function
 window.debugCameraSimple = function() {
     console.log('🐛 Debug Info:');
+    console.log('- Uploaded photos:', uploadedPhotos.length);
     console.log('- Container:', document.getElementById('camera-widget'));
-    console.log('- Start button:', document.getElementById('start-camera-btn'));
-    console.log('- Initial state:', document.getElementById('initial-state'));
-    console.log('- JFCustomWidget:', typeof window.JFCustomWidget !== 'undefined' ? window.JFCustomWidget : 'not found');
-    console.log('- Camera API:', navigator.mediaDevices ? 'available' : 'not available');
-    
-    // Force show initial state
-    showState('initial');
+    console.log('- JFCustomWidget:', typeof window.JFCustomWidget !== 'undefined' ? 'available' : 'not found');
 };
 
 console.log('📋 Run window.debugCameraSimple() for debug info');
