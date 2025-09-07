@@ -13,9 +13,6 @@ class CameraWidget {
     init() {
         this.createInterface();
         this.setupEventListeners();
-        
-        // Set initial compact size using JotForm's API
-        this.setWidgetHeight(80);
     }
 
     createInterface() {
@@ -23,13 +20,15 @@ class CameraWidget {
         container.innerHTML = `
             <div class="widget-container">
                 <div id="initial-state" class="state-container">
-                    <button id="start-camera-btn" class="primary-btn compact-btn">
+                    <button id="start-camera-btn" class="primary-btn">
                         📷 Take Photo
                     </button>
                 </div>
 
                 <div id="camera-state" class="state-container" style="display: none;">
-                    <video id="camera-video" autoplay playsinline muted></video>
+                    <div class="video-container">
+                        <video id="camera-video" autoplay playsinline muted></video>
+                    </div>
                     <div class="button-row">
                         <button id="capture-btn" class="primary-btn">📸 Capture</button>
                         <button id="cancel-btn" class="secondary-btn">✖ Cancel</button>
@@ -37,7 +36,9 @@ class CameraWidget {
                 </div>
 
                 <div id="preview-state" class="state-container" style="display: none;">
-                    <canvas id="photo-canvas"></canvas>
+                    <div class="preview-container">
+                        <canvas id="photo-canvas"></canvas>
+                    </div>
                     <div class="preview-actions">
                         <button id="approve-btn" class="success-btn">✓ Approve & Upload</button>
                         <button id="retake-btn" class="secondary-btn">↻ Retake</button>
@@ -96,38 +97,10 @@ class CameraWidget {
         });
     }
 
-    setWidgetHeight(height) {
-        // Use JotForm's official API to resize the widget
-        if (this.isInIframe) {
-            try {
-                // Method 1: JotForm's official API
-                if (typeof JFCustomWidget !== 'undefined') {
-                    JFCustomWidget.resize(height);
-                } 
-                // Method 2: postMessage API
-                else if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'resize',
-                        height: height
-                    }, '*');
-                }
-                // Method 3: Direct style manipulation (as fallback)
-                else {
-                    const iframe = window.frameElement;
-                    if (iframe) {
-                        iframe.style.height = height + 'px';
-                    }
-                }
-            } catch (error) {
-                console.log('Widget resize error:', error);
-            }
-        }
-    }
-
     async startCamera() {
         try {
-            // Expand widget before starting camera
-            this.setWidgetHeight(450);
+            // First, try to resize the container
+            this.requestContainerResize(400);
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
@@ -142,19 +115,39 @@ class CameraWidget {
             
         } catch (error) {
             console.error('Error accessing camera:', error);
-            // Reset to compact size on error
-            this.setWidgetHeight(80);
             alert('Could not access camera. Please make sure you have granted camera permissions and are using a secure connection (HTTPS).');
+        }
+    }
+
+    requestContainerResize(newHeight) {
+        // Try to communicate with JotForm to resize the container
+        if (this.isInIframe) {
+            try {
+                // Method 1: JotForm's official API
+                if (typeof JFCustomWidget !== 'undefined') {
+                    JFCustomWidget.resize(newHeight);
+                } 
+                // Method 2: postMessage API
+                else if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'resize',
+                        height: newHeight
+                    }, '*');
+                }
+            } catch (error) {
+                console.log('Widget resize error:', error);
+            }
         }
     }
 
     capturePhoto() {
         const context = this.canvas.getContext('2d');
         
-        this.canvas.width = 640;
-        this.canvas.height = 480;
+        // Set canvas size to match video
+        this.canvas.width = this.video.videoWidth;
+        this.canvas.height = this.video.videoHeight;
         
-        context.drawImage(this.video, 0, 0, 640, 480);
+        context.drawImage(this.video, 0, 0);
         
         this.canvas.toBlob((blob) => {
             this.capturedImageData = blob;
@@ -180,20 +173,20 @@ class CameraWidget {
         document.getElementById(state + '-state').style.display = 'block';
         this.currentState = state;
         
-        // Update widget size based on state
+        // Request container resize based on state
         switch(state) {
             case 'initial':
-                this.setWidgetHeight(80); // Very compact
+                this.requestContainerResize(75);
                 break;
             case 'camera':
             case 'preview':
-                this.setWidgetHeight(450); // Expanded
+                this.requestContainerResize(400);
                 break;
             case 'uploading':
-                this.setWidgetHeight(100); // Compact
+                this.requestContainerResize(100);
                 break;
             case 'thumbnail':
-                this.setWidgetHeight(180); // Compact with thumbnail
+                this.requestContainerResize(150);
                 break;
         }
     }
