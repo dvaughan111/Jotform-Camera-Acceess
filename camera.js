@@ -12,7 +12,7 @@ function initCameraWidget() {
         return;
     }
     
-    // Create the interface with ALL the new elements visible in the HTML
+    // Create the interface with multiple photo support
     container.innerHTML = `
         <div class="widget-container" style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px;">
             <!-- INITIAL STATE -->
@@ -52,37 +52,30 @@ function initCameraWidget() {
                 <p>Uploading...</p>
             </div>
             
-            <!-- THUMBNAIL STATE - UPDATED WITH ALL NEW ELEMENTS -->
+            <!-- THUMBNAIL STATE - UPDATED FOR MULTIPLE PHOTOS -->
             <div id="thumbnail-state" style="display: none;">
                 <p style="color: green; font-weight: bold; margin-bottom: 15px;">Photo uploaded successfully!</p>
                 
-                <!-- Main Thumbnail -->
-                <div style="margin: 15px 0;">
-                    <img id="uploaded-thumbnail" style="width: 150px; height: 150px; object-fit: cover; border-radius: 5px; cursor: pointer; border: 2px solid #28a745;" alt="Thumbnail">
-                </div>
-                
-                <!-- Action Buttons - NOW VISIBLE -->
+                <!-- Action Buttons -->
                 <div style="margin: 20px 0; padding: 10px; background: #fff; border-radius: 8px; border: 1px solid #ddd;">
-                    <button id="replace-photo-btn" style="background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 8px; cursor: pointer; font-size: 14px;">
-                        🔄 Replace This Photo
-                    </button>
                     <button id="add-another-btn" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 8px; cursor: pointer; font-size: 14px;">
                         📷 Add Another Photo
                     </button>
+                    <button id="done-btn" style="background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 8px; cursor: pointer; font-size: 14px;">
+                        ✅ Done Uploading
+                    </button>
                 </div>
                 
-                <!-- Uploaded Photos Gallery - VISIBLE CONTAINER -->
-                <div id="uploaded-photos-container" style="margin-top: 25px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ddd; display: block;"> <!-- CHANGED TO block -->
+                <!-- Uploaded Photos Gallery -->
+                <div id="uploaded-photos-container" style="margin-top: 25px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ddd;">
                     <h4 style="margin-bottom: 15px; color: #333; font-size: 16px;">Your Uploaded Photos:</h4>
-                    <div id="uploaded-photos-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; min-height: 50px;">
-                        <div style="color: #666; font-style: italic;">No additional photos yet</div>
-                    </div>
+                    <div id="uploaded-photos-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; min-height: 50px;"></div>
                 </div>
             </div>
         </div>
     `;
     
-    console.log('✅ Interface created with visible new elements');
+    console.log('✅ Interface created');
     setupClickHandlers();
     resizeWidget(75);
     console.log('✅ Widget setup complete');
@@ -122,30 +115,18 @@ function setupClickHandlers() {
         showState('camera');
     };
     
-    // Replace button - NOW WORKING
-    const replaceBtn = document.getElementById('replace-photo-btn');
-    if (replaceBtn) {
-        replaceBtn.onclick = function(e) {
-            console.log('🎯 REPLACE CLICKED!');
-            e.preventDefault();
-            if (uploadedPhotos.length > 0) {
-                URL.revokeObjectURL(uploadedPhotos[uploadedPhotos.length - 1].url);
-                uploadedPhotos.pop();
-                updateUploadedPhotosDisplay();
-            }
-            showState('initial');
-        };
-    }
+    // Add Another button
+    document.getElementById('add-another-btn').onclick = function(e) {
+        e.preventDefault();
+        showState('initial');
+    };
     
-    // Add Another button - NOW WORKING
-    const addAnotherBtn = document.getElementById('add-another-btn');
-    if (addAnotherBtn) {
-        addAnotherBtn.onclick = function(e) {
-            console.log('🎯 ADD ANOTHER CLICKED!');
-            e.preventDefault();
-            showState('initial');
-        };
-    }
+    // Done button
+    document.getElementById('done-btn').onclick = function(e) {
+        e.preventDefault();
+        // You can add any finalization logic here
+        alert('Photos uploaded successfully! You can submit the form now.');
+    };
 }
 
 function showState(stateName) {
@@ -165,12 +146,13 @@ function showState(stateName) {
         updateUploadedPhotosDisplay();
     }
     
+    // Adjust height based on number of photos
     const heights = {
         'initial': 75,
         'camera': 400,
         'preview': 400,
         'uploading': 120,
-        'thumbnail': uploadedPhotos.length > 1 ? 400 : 250
+        'thumbnail': Math.min(400 + (uploadedPhotos.length * 80), 600) // Dynamic height
     };
     
     resizeWidget(heights[stateName] || 75);
@@ -244,38 +226,60 @@ function approvePhoto() {
         if (canvas) {
             canvas.toBlob(blob => {
                 const url = URL.createObjectURL(blob);
-                const thumbnail = document.getElementById('uploaded-thumbnail');
-                if (thumbnail) {
-                    thumbnail.src = url;
-                    thumbnail.onclick = () => window.open(url, '_blank');
-                }
                 
-                // Add to uploaded photos
-                uploadedPhotos.push({ url: url, blob: blob, timestamp: Date.now() });
-                updateUploadedPhotosDisplay();
-                
-                // Submit to JotForm
-                const fileName = 'photo-' + Date.now() + '.jpg';
-                const reader = new FileReader();
-                reader.onload = () => {
-                    try {
-                        if (typeof window.JFCustomWidget !== 'undefined') {
-                            window.JFCustomWidget.submit({
-                                type: 'file',
-                                data: { file: reader.result, filename: fileName }
-                            });
-                        }
-                    } catch (e) {
-                        console.error('Submit error:', e);
-                    }
+                // Add to uploaded photos array
+                const photoData = {
+                    url: url,
+                    blob: blob,
+                    timestamp: Date.now(),
+                    fileName: 'photo-' + Date.now() + '.jpg'
                 };
-                reader.readAsDataURL(blob);
                 
+                uploadedPhotos.push(photoData);
+                
+                // Submit to JotForm with proper file data for PDF formatting
+                submitPhotoToJotForm(photoData);
+                
+                updateUploadedPhotosDisplay();
                 showState('thumbnail');
                 
             }, 'image/jpeg', 0.8);
         }
     }, 1500);
+}
+
+function submitPhotoToJotForm(photoData) {
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
+                // Submit as file array for proper PDF handling
+                window.JFCustomWidget.submit({
+                    type: 'file[]', // Use array format for multiple files
+                    data: {
+                        files: [{
+                            file: reader.result,
+                            filename: photoData.fileName,
+                            // Add PDF formatting options
+                            pdfOptions: {
+                                display: 'thumbnail',     // Show as thumbnail in PDF
+                                width: 'auto',           // Auto width
+                                height: 'auto',          // Auto height
+                                alignment: 'center',     // Center aligned
+                                border: '1px solid #ccc', // Light border
+                                padding: '5px',          // Padding around image
+                                quality: 'high'          // High quality in PDF
+                            }
+                        }]
+                    }
+                });
+                console.log('✅ Photo submitted with PDF formatting options');
+            }
+        } catch (e) {
+            console.error('❌ Submit error:', e);
+        }
+    };
+    reader.readAsDataURL(photoData.blob);
 }
 
 function updateUploadedPhotosDisplay() {
@@ -286,39 +290,79 @@ function updateUploadedPhotosDisplay() {
     
     photosList.innerHTML = '';
     
-    if (uploadedPhotos.length <= 1) {
-        photosList.innerHTML = '<div style="color: #666; font-style: italic;">No additional photos yet</div>';
+    if (uploadedPhotos.length === 0) {
+        photosList.innerHTML = '<div style="color: #666; font-style: italic;">No photos uploaded yet</div>';
         photosContainer.style.display = 'none';
         return;
     }
     
     photosContainer.style.display = 'block';
     
+    // Display all uploaded photos with delete buttons
     uploadedPhotos.forEach((photo, index) => {
         const photoElement = document.createElement('div');
         photoElement.style.position = 'relative';
         photoElement.style.cursor = 'pointer';
+        photoElement.style.margin = '5px';
         
         photoElement.innerHTML = `
-            <img src="${photo.url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 5px; border: 2px solid #007bff;">
-            <button onclick="window.removePhoto(${index})" style="
-                position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; border: none; 
-                border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; padding: 0;
-            ">✕</button>
+            <div style="position: relative; display: inline-block;">
+                <img src="${photo.url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 5px; border: 2px solid #007bff; cursor: pointer;">
+                <button onclick="event.stopPropagation(); window.removePhoto(${index})" style="
+                    position: absolute;
+                    top: -8px;
+                    right: -8px;
+                    background: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 24px;
+                    height: 24px;
+                    font-size: 12px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    line-height: 1;
+                    padding: 0;
+                ">✕</button>
+            </div>
         `;
         
+        // Click to view full image
         photoElement.onclick = () => window.open(photo.url, '_blank');
+        
         photosList.appendChild(photoElement);
     });
 }
 
 // Global function to remove photos
 window.removePhoto = function(index) {
-    if (confirm('Remove this photo?')) {
+    if (confirm('Are you sure you want to remove this photo?')) {
+        // Revoke the object URL to free memory
         URL.revokeObjectURL(uploadedPhotos[index].url);
+        
+        // Remove from array
         uploadedPhotos.splice(index, 1);
+        
+        // Update JotForm data (remove the file)
+        if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
+            window.JFCustomWidget.submit({
+                type: 'file[]',
+                data: {
+                    files: uploadedPhotos.map(photo => ({
+                        file: photo.blob ? URL.createObjectURL(photo.blob) : '',
+                        filename: photo.fileName
+                    }))
+                }
+            });
+        }
+        
+        // Update display
         updateUploadedPhotosDisplay();
-        if (uploadedPhotos.length === 0) showState('initial');
+        
+        // If no photos left, go back to initial state
+        if (uploadedPhotos.length === 0) {
+            showState('initial');
+        }
     }
 };
 
@@ -337,4 +381,4 @@ if (!tryInit()) {
     setTimeout(tryInit, 100);
 }
 
-console.log('📋 Camera widget loaded - Replace and Add Another buttons should now be visible!');
+console.log('📋 Multiple photo upload widget loaded!');
