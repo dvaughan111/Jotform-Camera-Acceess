@@ -15,7 +15,7 @@ class CameraWidget {
         this.setupEventListeners();
         
         // Set initial compact size
-        this.resizeContainer(75); // Changed from 100 to match your requirement
+        this.resizeContainer(75);
     }
 
     createInterface() {
@@ -103,85 +103,51 @@ class CameraWidget {
     resizeContainer(height) {
         console.log('Attempting to resize to:', height + 'px');
         
-        // Add a small delay to ensure DOM is ready
+        // Single reliable method for JotForm widgets
         setTimeout(() => {
-            let resizeSuccess = false;
-            
-            // Method 1: JotForm's official widget API (most reliable)
-            if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.resize) {
-                try {
-                    JFCustomWidget.resize(400, height); // width, height
-                    console.log('Resized using JFCustomWidget API to 400x' + height);
-                    resizeSuccess = true;
-                } catch (e) {
-                    console.log('JFCustomWidget resize failed:', e);
+            try {
+                // Method 1: Check if JFCustomWidget exists and has resize method
+                if (typeof window.JFCustomWidget !== 'undefined') {
+                    if (typeof window.JFCustomWidget.resize === 'function') {
+                        window.JFCustomWidget.resize(height);
+                        console.log('Resized using JFCustomWidget.resize()');
+                    } else if (typeof window.JFCustomWidget.requestFrameResize === 'function') {
+                        window.JFCustomWidget.requestFrameResize(height);
+                        console.log('Resized using JFCustomWidget.requestFrameResize()');
+                    } else {
+                        console.log('JFCustomWidget exists but no resize method found');
+                    }
                 }
-            }
-            
-            // Method 2: postMessage to parent with multiple message formats
-            if (window.parent && window.parent !== window && !resizeSuccess) {
-                try {
-                    // JotForm specific message format
+                // Method 2: Try global JFCustomWidget
+                else if (typeof JFCustomWidget !== 'undefined') {
+                    if (typeof JFCustomWidget.resize === 'function') {
+                        JFCustomWidget.resize(height);
+                        console.log('Resized using global JFCustomWidget.resize()');
+                    } else if (typeof JFCustomWidget.requestFrameResize === 'function') {
+                        JFCustomWidget.requestFrameResize(height);
+                        console.log('Resized using global JFCustomWidget.requestFrameResize()');
+                    }
+                }
+                // Method 3: PostMessage fallback
+                else if (window.parent && window.parent !== window) {
                     window.parent.postMessage({
                         type: 'setHeight',
                         height: height
                     }, '*');
-                    
-                    // Alternative format
-                    window.parent.postMessage({
-                        type: 'resize',
-                        width: 400,
-                        height: height
-                    }, '*');
-                    
-                    // Generic iframe resize message
-                    window.parent.postMessage({
-                        type: 'iframe-resize',
-                        height: height
-                    }, '*');
-                    
-                    console.log('Resize messages sent via postMessage');
-                    resizeSuccess = true;
-                } catch (e) {
-                    console.log('postMessage resize failed:', e);
+                    console.log('Sent resize message to parent frame');
                 }
-            }
-            
-            // Method 3: Try to find and resize the iframe directly
-            if (!resizeSuccess) {
-                try {
-                    const iframe = window.frameElement;
-                    if (iframe) {
-                        iframe.style.height = height + 'px';
-                        iframe.style.minHeight = height + 'px';
-                        iframe.style.maxHeight = height + 'px';
-                        iframe.setAttribute('height', height);
-                        console.log('Resized iframe directly to', height + 'px');
-                        resizeSuccess = true;
-                    }
-                } catch (e) {
-                    console.log('Direct iframe resize failed:', e);
+                // Method 4: Direct iframe manipulation
+                else if (window.frameElement) {
+                    window.frameElement.style.height = height + 'px';
+                    console.log('Resized iframe element directly');
                 }
-            }
-            
-            // Method 4: Try to find parent iframe by class or id
-            if (!resizeSuccess && window.parent) {
-                try {
-                    window.parent.postMessage({
-                        action: 'resize',
-                        height: height,
-                        width: 400
-                    }, '*');
-                    console.log('Sent generic resize action');
-                } catch (e) {
-                    console.log('Generic resize action failed:', e);
+                else {
+                    console.log('No resize method available');
                 }
+            } catch (error) {
+                console.error('Resize error:', error);
             }
-            
-            console.log(resizeSuccess ? 'Resize successful' : 'All resize methods attempted');
-        }, 50); // Small delay to ensure DOM updates
-        
-        return true;
+        }, 100);
     }
 
     async startCamera() {
@@ -190,7 +156,7 @@ class CameraWidget {
             this.resizeContainer(400);
             
             // Small delay to let resize happen before camera starts
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 200));
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
@@ -236,31 +202,38 @@ class CameraWidget {
         // Hide all states
         const states = ['initial', 'camera', 'preview', 'uploading', 'thumbnail'];
         states.forEach(s => {
-            document.getElementById(s + '-state').style.display = 'none';
+            const element = document.getElementById(s + '-state');
+            if (element) {
+                element.style.display = 'none';
+            }
         });
         
         // Show requested state
-        document.getElementById(state + '-state').style.display = 'block';
+        const targetElement = document.getElementById(state + '-state');
+        if (targetElement) {
+            targetElement.style.display = 'block';
+        }
+        
         this.currentState = state;
         
-        // Resize container based on state with appropriate delays
+        // Resize container based on state
         setTimeout(() => {
             switch(state) {
                 case 'initial':
-                    this.resizeContainer(75); // Compact - just the button (your requirement)
+                    this.resizeContainer(75);
                     break;
                 case 'camera':
                 case 'preview':
-                    this.resizeContainer(400); // Expanded - camera view (your requirement)
+                    this.resizeContainer(400);
                     break;
                 case 'uploading':
-                    this.resizeContainer(120); // Medium - uploading message
+                    this.resizeContainer(120);
                     break;
                 case 'thumbnail':
-                    this.resizeContainer(75); // Back to compact after upload (shrink as requested)
+                    this.resizeContainer(75);
                     break;
             }
-        }, 50);
+        }, 100);
     }
 
     approvePhoto() {
@@ -276,7 +249,8 @@ class CameraWidget {
                 const fileName = 'photo-' + Date.now() + '.jpg';
                 this.uploadedFileName = fileName;
                 
-                if (window.JFCustomWidget) {
+                // Check for JFCustomWidget properly
+                if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
                     window.JFCustomWidget.submit({
                         type: 'file',
                         data: {
@@ -284,18 +258,20 @@ class CameraWidget {
                             filename: fileName
                         }
                     });
-                    
-                    this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
-                    this.showThumbnail();
-                    
+                } else if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.submit) {
+                    JFCustomWidget.submit({
+                        type: 'file',
+                        data: {
+                            file: base64data,
+                            filename: fileName
+                        }
+                    });
                 } else {
-                    // Fallback for testing
-                    console.log('Testing mode - would upload:', fileName);
-                    this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
-                    setTimeout(() => {
-                        this.showThumbnail();
-                    }, 1000);
+                    console.log('Testing mode - JFCustomWidget not available');
                 }
+                
+                this.uploadedImageUrl = URL.createObjectURL(this.capturedImageData);
+                this.showThumbnail();
             };
             
             reader.onerror = () => {
@@ -319,7 +295,7 @@ class CameraWidget {
                 window.open(this.uploadedImageUrl, '_blank');
             };
         }
-        this.showState('thumbnail'); // This will now shrink back to 75px
+        this.showState('thumbnail');
     }
 
     deletePhoto() {
@@ -328,8 +304,14 @@ class CameraWidget {
                 URL.revokeObjectURL(this.uploadedImageUrl);
             }
             
-            if (window.JFCustomWidget) {
+            // Properly check for JFCustomWidget before using
+            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
                 window.JFCustomWidget.submit({
+                    type: 'file',
+                    data: null
+                });
+            } else if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.submit) {
+                JFCustomWidget.submit({
                     type: 'file',
                     data: null
                 });
@@ -349,20 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
     new CameraWidget();
 });
 
-// Enhanced message listener for JotForm communication
+// Listen for messages from JotForm
 window.addEventListener('message', (event) => {
-    console.log('Received message:', event.data);
-    
-    // Handle various JotForm messages
     if (event.data && event.data.type) {
-        switch(event.data.type) {
-            case 'resize':
-            case 'setHeight':
-            case 'iframe-resize':
-                console.log('Resize acknowledgment received:', event.data);
-                break;
-            default:
-                console.log('Unknown message type:', event.data.type);
-        }
+        console.log('Received message:', event.data.type);
     }
 });
