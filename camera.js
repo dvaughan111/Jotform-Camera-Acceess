@@ -14,7 +14,7 @@ function initCameraWidget() {
     
     // Create the interface with multiple photo support
     container.innerHTML = `
-        <div class="widget-container" style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px;">
+        <div class="widget-container" style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px; min-height: 100px;">
             <!-- INITIAL STATE -->
             <div id="initial-state" style="display: block;">
                 <button id="start-camera-btn" style="
@@ -26,7 +26,7 @@ function initCameraWidget() {
                     font-size: 16px; 
                     cursor: pointer;
                     width: 200px;
-                    height: 50px;
+                    margin: 10px;
                 ">📷 Take Photo</button>
                 <p style="margin-top: 10px; color: #666; font-size: 14px;">Click to start camera</p>
             </div>
@@ -42,22 +42,25 @@ function initCameraWidget() {
             
             <!-- PREVIEW STATE -->
             <div id="preview-state" style="display: none;">
-                <canvas id="photo-canvas" style="max-width: 100%; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 15px;"></canvas><br>
+                <canvas id="photo-canvas" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 15px;"></canvas><br>
                 <button id="approve-btn" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">✓ Approve</button>
                 <button id="retake-btn" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">↻ Retake</button>
             </div>
             
             <!-- UPLOADING STATE -->
             <div id="uploading-state" style="display: none;">
-                <p>Uploading...</p>
+                <p style="font-size: 16px; color: #007bff;">Uploading photo...</p>
+                <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                    <div style="width: 100%; height: 100%; background: #007bff; animation: pulse 1.5s infinite;"></div>
+                </div>
             </div>
             
             <!-- THUMBNAIL STATE - UPDATED FOR MULTIPLE PHOTOS -->
             <div id="thumbnail-state" style="display: none;">
-                <p style="color: green; font-weight: bold; margin-bottom: 15px;">Photo uploaded successfully!</p>
+                <p style="color: green; font-weight: bold; margin-bottom: 15px; font-size: 16px;">Photo uploaded successfully!</p>
                 
                 <!-- Action Buttons -->
-                <div style="margin: 20px 0; padding: 10px; background: #fff; border-radius: 8px; border: 1px solid #ddd;">
+                <div style="margin: 20px 0; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ddd;">
                     <button id="add-another-btn" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 8px; cursor: pointer; font-size: 14px;">
                         📷 Add Another Photo
                     </button>
@@ -66,18 +69,78 @@ function initCameraWidget() {
                     </button>
                 </div>
                 
-                <!-- Uploaded Photos Gallery -->
-                <div id="uploaded-photos-container" style="margin-top: 25px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ddd;">
-                    <h4 style="margin-bottom: 15px; color: #333; font-size: 16px;">Your Uploaded Photos:</h4>
-                    <div id="uploaded-photos-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; min-height: 50px;"></div>
+                <!-- Uploaded Photos Gallery - FIXED VISIBILITY -->
+                <div id="uploaded-photos-container" style="margin-top: 25px; padding: 20px; background: #fff; border-radius: 8px; border: 1px solid #ddd; display: block;">
+                    <h4 style="margin-bottom: 20px; color: #333; font-size: 18px; font-weight: bold;">Your Uploaded Photos:</h4>
+                    <div id="uploaded-photos-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; align-items: center; min-height: 100px;"></div>
                 </div>
             </div>
         </div>
+        
+        <style>
+            @keyframes pulse {
+                0% { opacity: 0.6; }
+                50% { opacity: 1; }
+                100% { opacity: 0.6; }
+            }
+            
+            .photo-thumbnail {
+                position: relative;
+                cursor: pointer;
+                margin: 8px;
+                transition: transform 0.2s ease;
+            }
+            
+            .photo-thumbnail:hover {
+                transform: scale(1.05);
+            }
+            
+            .photo-thumbnail img {
+                width: 100px;
+                height: 100px;
+                object-fit: cover;
+                border-radius: 8px;
+                border: 3px solid #007bff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }
+            
+            .delete-btn {
+                position: absolute;
+                top: -10px;
+                right: -10px;
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 28px;
+                height: 28px;
+                font-size: 14px;
+                cursor: pointer;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+            }
+            
+            .delete-btn:hover {
+                background: #c82333;
+                transform: scale(1.1);
+            }
+            
+            .empty-state {
+                color: #666;
+                font-style: italic;
+                padding: 20px;
+                text-align: center;
+            }
+        </style>
     `;
     
     console.log('✅ Interface created');
     setupClickHandlers();
-    resizeWidget(75);
+    resizeWidget(100);
     console.log('✅ Widget setup complete');
 }
 
@@ -124,8 +187,7 @@ function setupClickHandlers() {
     // Done button
     document.getElementById('done-btn').onclick = function(e) {
         e.preventDefault();
-        // You can add any finalization logic here
-        alert('Photos uploaded successfully! You can submit the form now.');
+        alert('All photos have been uploaded! You can submit the form now.');
     };
 }
 
@@ -147,15 +209,18 @@ function showState(stateName) {
     }
     
     // Adjust height based on number of photos
+    const photoCount = uploadedPhotos.length;
+    const baseHeight = 100;
+    const photoHeight = Math.min(photoCount * 30, 200); // Max additional height
     const heights = {
-        'initial': 75,
-        'camera': 400,
-        'preview': 400,
-        'uploading': 120,
-        'thumbnail': Math.min(400 + (uploadedPhotos.length * 80), 600) // Dynamic height
+        'initial': baseHeight,
+        'camera': 450,
+        'preview': 450,
+        'uploading': 150,
+        'thumbnail': baseHeight + photoHeight + 200 // Base + photos + buttons
     };
     
-    resizeWidget(heights[stateName] || 75);
+    resizeWidget(heights[stateName] || baseHeight);
 }
 
 function resizeWidget(height) {
@@ -174,12 +239,16 @@ function resizeWidget(height) {
 
 async function startCamera() {
     try {
-        resizeWidget(400);
+        resizeWidget(450);
         showState('camera');
         await new Promise(resolve => setTimeout(resolve, 500));
         
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } }
+            video: { 
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
         });
         
         currentStream = stream;
@@ -191,7 +260,7 @@ async function startCamera() {
     } catch (error) {
         alert('Camera error: ' + error.message);
         showState('initial');
-        resizeWidget(75);
+        resizeWidget(100);
     }
 }
 
@@ -232,18 +301,18 @@ function approvePhoto() {
                     url: url,
                     blob: blob,
                     timestamp: Date.now(),
-                    fileName: 'photo-' + Date.now() + '.jpg'
+                    fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`
                 };
                 
                 uploadedPhotos.push(photoData);
                 
-                // Submit to JotForm with proper file data for PDF formatting
+                // Submit to JotForm
                 submitPhotoToJotForm(photoData);
                 
                 updateUploadedPhotosDisplay();
                 showState('thumbnail');
                 
-            }, 'image/jpeg', 0.8);
+            }, 'image/jpeg', 0.85);
         }
     }, 1500);
 }
@@ -253,27 +322,24 @@ function submitPhotoToJotForm(photoData) {
     reader.onload = () => {
         try {
             if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
-                // Submit as file array for proper PDF handling
+                // Submit each photo individually
                 window.JFCustomWidget.submit({
-                    type: 'file[]', // Use array format for multiple files
+                    type: 'file',
                     data: {
-                        files: [{
-                            file: reader.result,
-                            filename: photoData.fileName,
-                            // Add PDF formatting options
-                            pdfOptions: {
-                                display: 'thumbnail',     // Show as thumbnail in PDF
-                                width: 'auto',           // Auto width
-                                height: 'auto',          // Auto height
-                                alignment: 'center',     // Center aligned
-                                border: '1px solid #ccc', // Light border
-                                padding: '5px',          // Padding around image
-                                quality: 'high'          // High quality in PDF
-                            }
-                        }]
+                        file: reader.result,
+                        filename: photoData.fileName,
+                        question: `Camera Photo ${uploadedPhotos.length}`,
+                        pdfOptions: {
+                            display: 'thumbnail',
+                            width: 'auto',
+                            height: 'auto',
+                            alignment: 'center',
+                            border: '1px solid #ccc',
+                            padding: '5px'
+                        }
                     }
                 });
-                console.log('✅ Photo submitted with PDF formatting options');
+                console.log('✅ Photo submitted:', photoData.fileName);
             }
         } catch (e) {
             console.error('❌ Submit error:', e);
@@ -291,40 +357,20 @@ function updateUploadedPhotosDisplay() {
     photosList.innerHTML = '';
     
     if (uploadedPhotos.length === 0) {
-        photosList.innerHTML = '<div style="color: #666; font-style: italic;">No photos uploaded yet</div>';
+        photosList.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
         photosContainer.style.display = 'none';
         return;
     }
     
     photosContainer.style.display = 'block';
     
-    // Display all uploaded photos with delete buttons
+    // Display ALL uploaded photos
     uploadedPhotos.forEach((photo, index) => {
         const photoElement = document.createElement('div');
-        photoElement.style.position = 'relative';
-        photoElement.style.cursor = 'pointer';
-        photoElement.style.margin = '5px';
-        
+        photoElement.className = 'photo-thumbnail';
         photoElement.innerHTML = `
-            <div style="position: relative; display: inline-block;">
-                <img src="${photo.url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 5px; border: 2px solid #007bff; cursor: pointer;">
-                <button onclick="event.stopPropagation(); window.removePhoto(${index})" style="
-                    position: absolute;
-                    top: -8px;
-                    right: -8px;
-                    background: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 24px;
-                    height: 24px;
-                    font-size: 12px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    line-height: 1;
-                    padding: 0;
-                ">✕</button>
-            </div>
+            <img src="${photo.url}" alt="Photo ${index + 1}">
+            <button class="delete-btn" onclick="event.stopPropagation(); window.removePhoto(${index})">✕</button>
         `;
         
         // Click to view full image
@@ -343,21 +389,27 @@ window.removePhoto = function(index) {
         // Remove from array
         uploadedPhotos.splice(index, 1);
         
-        // Update JotForm data (remove the file)
-        if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
-            window.JFCustomWidget.submit({
-                type: 'file[]',
-                data: {
-                    files: uploadedPhotos.map(photo => ({
-                        file: photo.blob ? URL.createObjectURL(photo.blob) : '',
-                        filename: photo.fileName
-                    }))
-                }
-            });
-        }
-        
         // Update display
         updateUploadedPhotosDisplay();
+        
+        // Update JotForm data
+        if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
+            // Resubmit all remaining photos
+            uploadedPhotos.forEach((photo, idx) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    window.JFCustomWidget.submit({
+                        type: 'file',
+                        data: {
+                            file: reader.result,
+                            filename: photo.fileName,
+                            question: `Camera Photo ${idx + 1}`
+                        }
+                    });
+                };
+                reader.readAsDataURL(photo.blob);
+            });
+        }
         
         // If no photos left, go back to initial state
         if (uploadedPhotos.length === 0) {
