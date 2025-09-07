@@ -27,7 +27,7 @@ class CameraWidget {
 
                 <div id="camera-state" class="state-container" style="display: none;">
                     <div class="video-container">
-                        <video id="camera-video" autoplay playsinline muted></video>
+                        <video id="camera-video" playsinline muted></video>
                     </div>
                     <div class="button-row">
                         <button id="capture-btn" class="primary-btn">📸 Capture</button>
@@ -99,9 +99,6 @@ class CameraWidget {
 
     async startCamera() {
         try {
-            // First, try to resize the container
-            this.requestContainerResize(400);
-            
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     facingMode: 'environment',
@@ -111,32 +108,17 @@ class CameraWidget {
             });
             
             this.video.srcObject = stream;
+            
+            // Manually play the video after user interaction
+            this.video.play().catch(e => {
+                console.log("Video play failed, but camera is accessible:", e);
+            });
+            
             this.showState('camera');
             
         } catch (error) {
             console.error('Error accessing camera:', error);
             alert('Could not access camera. Please make sure you have granted camera permissions and are using a secure connection (HTTPS).');
-        }
-    }
-
-    requestContainerResize(newHeight) {
-        // Try to communicate with JotForm to resize the container
-        if (this.isInIframe) {
-            try {
-                // Method 1: JotForm's official API
-                if (typeof JFCustomWidget !== 'undefined') {
-                    JFCustomWidget.resize(newHeight);
-                } 
-                // Method 2: postMessage API
-                else if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'resize',
-                        height: newHeight
-                    }, '*');
-                }
-            } catch (error) {
-                console.log('Widget resize error:', error);
-            }
         }
     }
 
@@ -172,23 +154,6 @@ class CameraWidget {
         // Show requested state
         document.getElementById(state + '-state').style.display = 'block';
         this.currentState = state;
-        
-        // Request container resize based on state
-        switch(state) {
-            case 'initial':
-                this.requestContainerResize(75);
-                break;
-            case 'camera':
-            case 'preview':
-                this.requestContainerResize(400);
-                break;
-            case 'uploading':
-                this.requestContainerResize(100);
-                break;
-            case 'thumbnail':
-                this.requestContainerResize(150);
-                break;
-        }
     }
 
     approvePhoto() {
@@ -204,6 +169,7 @@ class CameraWidget {
                 const fileName = 'photo-' + Date.now() + '.jpg';
                 this.uploadedFileName = fileName;
                 
+                // Use JotForm's widget API to submit the file
                 if (window.JFCustomWidget) {
                     window.JFCustomWidget.submit({
                         type: 'file',
