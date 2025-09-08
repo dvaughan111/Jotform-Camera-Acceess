@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JotForm Camera Widget</title>
     <style>
-        /* Reset and base styles */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -596,15 +595,18 @@
             if (typeof JFCustomWidget !== 'undefined') {
                 const reader = new FileReader();
                 reader.onload = function() {
-                    JFCustomWidget.submit({
-                        type: 'file',
-                        data: {
-                            file: reader.result,
-                            filename: photoData.fileName,
-                            question: 'Camera Photo Upload' // This should match your form field
-                        }
-                    });
-                    console.log('✅ Photo submitted to JotForm:', photoData.fileName);
+                    // Submit to JotForm without blocking the UI
+                    setTimeout(() => {
+                        JFCustomWidget.submit({
+                            type: 'file',
+                            data: {
+                                file: reader.result,
+                                filename: photoData.fileName,
+                                question: 'Camera Photo Upload' // This should match your form field
+                            }
+                        });
+                        console.log('✅ Photo submitted to JotForm:', photoData.fileName);
+                    }, 100); // Small delay to prevent UI blocking
                 };
                 reader.readAsDataURL(photoData.blob);
             } else {
