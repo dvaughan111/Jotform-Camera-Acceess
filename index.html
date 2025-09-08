@@ -3,476 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JotForm Camera Widget</title>
+    <title>Camera Widget</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
-            color: #333;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: #4a6cf7;
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            opacity: 0.9;
-        }
-
+        
         .widget-container {
-            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-
-        /* State containers */
+        
         .state-container {
             width: 100%;
-            min-height: 300px;
+            padding: 15px;
+            text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            text-align: center;
         }
-
-        /* Buttons */
-        .primary-btn, .secondary-btn, .success-btn {
-            padding: 12px 24px;
+        
+        .btn {
+            padding: 10px 20px;
             border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: 4px;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 8px;
-            min-width: 140px;
+            margin: 5px;
         }
-
-        .primary-btn {
-            background: #4a6cf7;
+        
+        .btn-primary {
+            background: #007bff;
             color: white;
         }
-
-        .primary-btn:hover {
-            background: #3b5be3;
-            transform: translateY(-2px);
-        }
-
-        .secondary-btn {
-            background: #6c757d;
-            color: white;
-        }
-
-        .secondary-btn:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-
-        .success-btn {
+        
+        .btn-success {
             background: #28a745;
             color: white;
         }
-
-        .success-btn:hover {
-            background: #218838;
-            transform: translateY(-2px);
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
         }
-
-        /* Video container and video element */
+        
         .video-container {
             width: 100%;
-            height: 300px;
+            height: 250px;
             background: #000;
-            border-radius: 8px;
+            border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 20px;
-            position: relative;
+            margin-bottom: 10px;
         }
-
+        
         #camera-video {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-
-        /* Button row for camera controls */
-        .button-row {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-
-        /* Preview container and canvas */
+        
         .preview-container {
             width: 100%;
-            height: 300px;
+            height: 250px;
             background: #f8f9fa;
-            border-radius: 8px;
+            border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px dashed #dee2e6;
         }
-
+        
         #photo-canvas {
             max-width: 100%;
             max-height: 100%;
-            object-fit: contain;
-            border-radius: 6px;
         }
-
-        /* Preview actions */
-        .preview-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
-        /* Uploading state */
-        .uploading-text {
-            font-size: 18px;
-            color: #6c757d;
-            margin-bottom: 20px;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #e9ecef;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 30px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: #4a6cf7;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-
-        /* Thumbnail state */
-        .success-message {
-            font-size: 18px;
-            color: #28a745;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .actions-container {
-            margin: 25px 0;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            width: 100%;
-        }
-
-        /* Photo gallery styles */
-        .photo-gallery {
-            margin-top: 25px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            width: 100%;
-        }
-
-        .gallery-title {
-            margin-bottom: 20px;
-            color: #333;
-            font-size: 20px;
-            font-weight: 600;
-        }
-
-        .uploaded-photos-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-            min-height: 120px;
-        }
-
-        .photo-thumbnail {
+        
+        .thumbnail-container {
             position: relative;
-            cursor: pointer;
-            transition: transform 0.2s ease;
+            display: inline-block;
+            margin: 5px;
         }
-
-        .photo-thumbnail:hover {
-            transform: scale(1.05);
-        }
-
-        .photo-thumbnail img {
-            width: 120px;
-            height: 120px;
+        
+        .thumbnail-image {
+            width: 100px;
+            height: 100px;
             object-fit: cover;
-            border-radius: 8px;
-            border: 3px solid #4a6cf7;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 4px;
         }
-
-        .photo-delete-btn {
+        
+        .delete-btn {
             position: absolute;
-            top: -10px;
-            right: -10px;
-            background: #dc3545;
-            color: white;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
             border: none;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            font-size: 16px;
+            background: #dc3545;
+            color: white;
             cursor: pointer;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        .photo-delete-btn:hover {
-            background: #c82333;
-            transform: scale(1.1);
-        }
-
-        .empty-state {
-            color: #6c757d;
-            font-style: italic;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .instructions {
-            background: #e9f7ff;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #4a6cf7;
-        }
-
-        .instructions h3 {
-            color: #4a6cf7;
-            margin-bottom: 10px;
-        }
-
-        .footer {
-            text-align: center;
-            padding: 20px;
-            background: #f8f9fa;
-            border-top: 1px solid #dee2e6;
-            color: #6c757d;
-            font-size: 14px;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
-            .button-row, .preview-actions {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .primary-btn, .secondary-btn, .success-btn {
-                width: 100%;
-                max-width: 250px;
-            }
-            
-            .video-container, .preview-container {
-                height: 250px;
-            }
-            
-            .photo-thumbnail img {
-                width: 100px;
-                height: 100px;
-            }
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>JotForm Camera Widget</h1>
-            <p>Take photos directly from your device and attach them to your form</p>
-        </div>
-        
-        <div class="widget-container">
-            <div class="instructions">
-                <h3>How to use this widget:</h3>
-                <p>1. Click "Take Photo" to start your camera</p>
-                <p>2. Capture your photo and approve it</p>
-                <p>3. Add more photos if needed</p>
-                <p>4. Submit your form when finished</p>
-            </div>
-            
-            <!-- Camera Widget -->
-            <div id="camera-widget">
-                <!-- Widget will be initialized here by JavaScript -->
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p>This widget integrates with JotForm to allow direct photo uploads from your device.</p>
-        </div>
-    </div>
+    <div id="camera-widget"></div>
 
     <script>
-        console.log('🚀 Camera Widget Loading...');
+        console.log('Camera Widget Loading...');
 
         let currentStream = null;
         let uploadedPhotos = [];
 
         function initCameraWidget() {
-            console.log('📍 initCameraWidget called');
+            console.log('Initializing camera widget');
             
             const container = document.getElementById('camera-widget');
             if (!container) {
-                console.error('❌ No camera-widget container found');
+                console.error('No camera-widget container found');
                 return;
             }
             
-            // Create the interface with multiple photo support
             container.innerHTML = `
-                <!-- INITIAL STATE -->
-                <div id="initial-state" class="state-container">
-                    <button id="start-camera-btn" class="primary-btn">📷 Take Photo</button>
-                    <p style="margin-top: 15px; color: #666;">Click to start camera</p>
-                </div>
-                
-                <!-- CAMERA STATE -->
-                <div id="camera-state" class="state-container" style="display: none;">
-                    <div class="video-container">
-                        <video id="camera-video" playsinline muted></video>
-                    </div>
-                    <div class="button-row">
-                        <button id="capture-btn" class="success-btn">📸 Capture Photo</button>
-                        <button id="cancel-btn" class="secondary-btn">✖ Cancel</button>
-                    </div>
-                </div>
-                
-                <!-- PREVIEW STATE -->
-                <div id="preview-state" class="state-container" style="display: none;">
-                    <div class="preview-container">
-                        <canvas id="photo-canvas"></canvas>
-                    </div>
-                    <div class="preview-actions">
-                        <button id="approve-btn" class="success-btn">✓ Approve & Upload</button>
-                        <button id="retake-btn" class="secondary-btn">↻ Retake Photo</button>
-                    </div>
-                </div>
-                
-                <!-- UPLOADING STATE -->
-                <div id="uploading-state" class="state-container" style="display: none;">
-                    <p class="uploading-text">Uploading your photo...</p>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                    </div>
-                </div>
-                
-                <!-- THUMBNAIL STATE -->
-                <div id="thumbnail-state" class="state-container" style="display: none;">
-                    <p class="success-message">✅ Photo uploaded successfully!</p>
-                    
-                    <!-- Action Buttons -->
-                    <div class="actions-container">
-                        <button id="add-another-btn" class="success-btn">📷 Add Another Photo</button>
-                        <button id="done-btn" class="primary-btn">✅ I'm Done Taking Photos</button>
+                <div class="widget-container">
+                    <div id="initial-state" class="state-container">
+                        <button id="start-camera-btn" class="btn btn-primary">Take Photo</button>
                     </div>
                     
-                    <!-- Uploaded Photos Gallery -->
-                    <div id="uploaded-photos-container" class="photo-gallery">
-                        <h4 class="gallery-title">Your Uploaded Photos:</h4>
-                        <div id="uploaded-photos-list" class="uploaded-photos-list"></div>
+                    <div id="camera-state" class="state-container" style="display: none;">
+                        <div class="video-container">
+                            <video id="camera-video" playsinline muted></video>
+                        </div>
+                        <div>
+                            <button id="capture-btn" class="btn btn-success">Capture</button>
+                            <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                    
+                    <div id="preview-state" class="state-container" style="display: none;">
+                        <div class="preview-container">
+                            <canvas id="photo-canvas"></canvas>
+                        </div>
+                        <div>
+                            <button id="approve-btn" class="btn btn-success">Approve</button>
+                            <button id="retake-btn" class="btn btn-secondary">Retake</button>
+                        </div>
+                    </div>
+                    
+                    <div id="thumbnail-state" class="state-container" style="display: none;">
+                        <div id="uploaded-photos-container">
+                            <div id="uploaded-photos-list"></div>
+                        </div>
+                        <div>
+                            <button id="add-another-btn" class="btn btn-success">Add Another Photo</button>
+                        </div>
                     </div>
                 </div>
             `;
             
-            console.log('✅ Interface created');
             setupClickHandlers();
-            console.log('✅ Widget setup complete');
         }
 
         function setupClickHandlers() {
-            console.log('📍 Setting up click handlers...');
-            
-            // Start camera button
             document.getElementById('start-camera-btn').onclick = function(e) {
                 e.preventDefault();
                 startCamera();
             };
             
-            // Capture button
             document.getElementById('capture-btn').onclick = function(e) {
                 e.preventDefault();
                 capturePhoto();
             };
             
-            // Cancel button
             document.getElementById('cancel-btn').onclick = function(e) {
                 e.preventDefault();
                 stopCamera();
                 showState('initial');
             };
             
-            // Approve button
             document.getElementById('approve-btn').onclick = function(e) {
                 e.preventDefault();
                 approvePhoto();
             };
             
-            // Retake button
             document.getElementById('retake-btn').onclick = function(e) {
                 e.preventDefault();
                 showState('camera');
             };
             
-            // Add Another button
             document.getElementById('add-another-btn').onclick = function(e) {
                 e.preventDefault();
                 showState('initial');
             };
-            
-            // Done button
-            document.getElementById('done-btn').onclick = function(e) {
-                e.preventDefault();
-                alert('You have finished uploading photos. You can now submit the JotForm.');
-            };
         }
 
         function showState(stateName) {
-            console.log('📍 showState called with:', stateName);
-            
-            const states = ['initial', 'camera', 'preview', 'uploading', 'thumbnail'];
+            const states = ['initial', 'camera', 'preview', 'thumbnail'];
             states.forEach(state => {
                 const element = document.getElementById(state + '-state');
                 if (element) element.style.display = 'none';
@@ -481,7 +213,6 @@
             const targetElement = document.getElementById(stateName + '-state');
             if (targetElement) targetElement.style.display = 'flex';
             
-            // Update photos display when showing thumbnail state
             if (stateName === 'thumbnail') {
                 updateUploadedPhotosDisplay();
             }
@@ -535,37 +266,9 @@
         }
 
         function approvePhoto() {
-            showState('uploading');
-            
-            // Simulate upload progress
-            const progressFill = document.getElementById('progress-fill');
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += 5;
-                progressFill.style.width = `${progress}%`;
-                
-                if (progress >= 100) {
-                    clearInterval(progressInterval);
-                    finishUpload();
-                }
-            }, 100);
-        }
-
-        function finishUpload() {
             const canvas = document.getElementById('photo-canvas');
             if (canvas) {
-                // Use a smaller image size for faster processing
-                const resizedCanvas = document.createElement('canvas');
-                const ctx = resizedCanvas.getContext('2d');
-                
-                // Set smaller dimensions for faster processing
-                resizedCanvas.width = 800;
-                resizedCanvas.height = 600;
-                
-                // Draw the resized image
-                ctx.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
-                
-                resizedCanvas.toBlob(blob => {
+                canvas.toBlob(blob => {
                     const url = URL.createObjectURL(blob);
                     
                     // Add to uploaded photos array
@@ -573,83 +276,54 @@
                         url: url,
                         blob: blob,
                         timestamp: Date.now(),
-                        fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`
+                        fileName: `photo-${Date.now()}.jpg`
                     };
                     
                     uploadedPhotos.push(photoData);
                     
-                    // Submit to JotForm (this is the key fix)
-                    submitPhotoToJotForm(photoData);
+                    // Submit to JotForm using the correct method
+                    if (typeof JFCustomWidget !== 'undefined') {
+                        const reader = new FileReader();
+                        reader.onload = function() {
+                            JFCustomWidget.submit({
+                                type: 'file',
+                                data: {
+                                    file: reader.result,
+                                    filename: photoData.fileName,
+                                    question: 'Upload Photos' // This should match your form field name
+                                }
+                            });
+                        };
+                        reader.readAsDataURL(blob);
+                    }
                     
                     updateUploadedPhotosDisplay();
                     showState('thumbnail');
                     
-                }, 'image/jpeg', 0.7); // Lower quality for faster processing
-            }
-        }
-
-        function submitPhotoToJotForm(photoData) {
-            console.log('Submitting to JotForm:', photoData.fileName);
-            
-            // This is the key fix - we need to properly integrate with JotForm
-            if (typeof JFCustomWidget !== 'undefined') {
-                const reader = new FileReader();
-                reader.onload = function() {
-                    // Submit to JotForm without blocking the UI
-                    setTimeout(() => {
-                        JFCustomWidget.submit({
-                            type: 'file',
-                            data: {
-                                file: reader.result,
-                                filename: photoData.fileName,
-                                question: 'Camera Photo Upload' // This should match your form field
-                            }
-                        });
-                        console.log('✅ Photo submitted to JotForm:', photoData.fileName);
-                    }, 100); // Small delay to prevent UI blocking
-                };
-                reader.readAsDataURL(photoData.blob);
-            } else {
-                console.warn('JFCustomWidget is not defined - simulating upload');
-                // Simulate successful upload for demo purposes
-                setTimeout(() => {
-                    console.log('✅ Simulated upload complete:', photoData.fileName);
-                }, 300);
+                }, 'image/jpeg', 0.8);
             }
         }
 
         function updateUploadedPhotosDisplay() {
             const photosList = document.getElementById('uploaded-photos-list');
-            const photosContainer = document.getElementById('uploaded-photos-container');
-            
-            if (!photosList || !photosContainer) return;
+            if (!photosList) return;
             
             photosList.innerHTML = '';
             
             if (uploadedPhotos.length === 0) {
-                photosList.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
-                photosContainer.style.display = 'none';
+                photosList.innerHTML = '<div>No photos uploaded yet</div>';
                 return;
             }
             
-            photosContainer.style.display = 'block';
-            
-            // Display ALL uploaded photos
             uploadedPhotos.forEach((photo, index) => {
                 const photoElement = document.createElement('div');
-                photoElement.className = 'photo-thumbnail';
+                photoElement.className = 'thumbnail-container';
                 photoElement.innerHTML = `
-                    <img src="${photo.url}" alt="Uploaded photo ${index + 1}">
-                    <button class="photo-delete-btn" data-index="${index}">✕</button>
+                    <img src="${photo.url}" class="thumbnail-image">
+                    <button class="delete-btn" data-index="${index}">X</button>
                 `;
                 
-                // Click to view full image
-                photoElement.onclick = () => {
-                    window.open(photo.url, '_blank');
-                };
-                
-                // Delete button handler
-                const deleteBtn = photoElement.querySelector('.photo-delete-btn');
+                const deleteBtn = photoElement.querySelector('.delete-btn');
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
                     removePhoto(index);
@@ -661,26 +335,22 @@
 
         function removePhoto(index) {
             if (confirm('Are you sure you want to remove this photo?')) {
-                // Revoke the object URL to free memory
                 URL.revokeObjectURL(uploadedPhotos[index].url);
-                
-                // Remove from array
                 uploadedPhotos.splice(index, 1);
-                
-                // Update display
                 updateUploadedPhotosDisplay();
                 
-                // If no photos left, go back to initial state
                 if (uploadedPhotos.length === 0) {
                     showState('initial');
                 }
             }
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', initCameraWidget);
-
-        console.log('📋 Camera widget loaded successfully!');
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCameraWidget);
+        } else {
+            initCameraWidget();
+        }
     </script>
 </body>
 </html>
