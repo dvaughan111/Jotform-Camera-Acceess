@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Widget</title>
+    <!-- Add permissions policies to resolve violations -->
+    <meta http-equiv="Permissions-Policy" content="autoplay=(self), camera=(self), fullscreen=(self), encrypted-media=(self)">
     <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
     <style>
         * {
@@ -36,6 +38,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            min-height: 300px;
         }
         
         .btn {
@@ -150,11 +153,25 @@
             justify-content: center;
             gap: 10px;
         }
+        
+        .permission-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            color: #856404;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="camera-widget">
         <div class="widget-container">
+            <div class="permission-warning" id="permission-warning">
+                Camera permissions are required to use this feature. Please allow camera access when prompted.
+            </div>
+            
             <div id="initial-state" class="state-container">
                 <button id="start-camera-btn" class="btn btn-primary">Take Photo</button>
             </div>
@@ -187,6 +204,11 @@
                 <div>
                     <button id="add-another-btn" class="btn btn-success">Add Another Photo</button>
                 </div>
+            </div>
+            
+            <div id="error-state" class="state-container" style="display: none;">
+                <p>Unable to access camera. Please check your permissions and try again.</p>
+                <button id="retry-btn" class="btn btn-primary">Retry</button>
             </div>
         </div>
     </div>
@@ -234,10 +256,15 @@
                 e.preventDefault();
                 showState('initial');
             });
+            
+            document.getElementById('retry-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                showState('initial');
+            });
         }
 
         function showState(stateName) {
-            const states = ['initial', 'camera', 'preview', 'thumbnail'];
+            const states = ['initial', 'camera', 'preview', 'thumbnail', 'error'];
             states.forEach(state => {
                 const element = document.getElementById(state + '-state');
                 if (element) element.style.display = 'none';
@@ -245,11 +272,19 @@
             
             const targetElement = document.getElementById(stateName + '-state');
             if (targetElement) targetElement.style.display = 'flex';
+            
+            // Show permission warning when accessing camera
+            if (stateName === 'initial') {
+                document.getElementById('permission-warning').style.display = 'block';
+            }
         }
 
         async function startCamera() {
             try {
                 showState('camera');
+                
+                // Show permission warning
+                document.getElementById('permission-warning').style.display = 'block';
                 
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { 
@@ -259,15 +294,25 @@
                     }
                 });
                 
+                // Hide warning after successful access
+                document.getElementById('permission-warning').style.display = 'none';
+                
                 currentStream = stream;
                 const video = document.getElementById('camera-video');
                 if (video) {
                     video.srcObject = stream;
-                    video.onloadedmetadata = () => video.play().catch(console.log);
+                    // Handle autoplay restrictions properly
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.log("Autoplay prevented:", error);
+                            // Show play button or handle accordingly
+                        });
+                    }
                 }
             } catch (error) {
-                alert('Camera error: ' + error.message);
-                showState('initial');
+                console.error('Camera error:', error);
+                showState('error');
             }
         }
 
