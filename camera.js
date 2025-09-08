@@ -14,15 +14,15 @@ function initCameraWidget() {
     
     // Create the interface with multiple photo support
     container.innerHTML = `
-        <div class="widget-container">
+        <div class="widget-container" style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px; min-height: 100px;">
             <!-- INITIAL STATE -->
-            <div id="initial-state" class="state-container visible">
+            <div id="initial-state" style="display: block;">
                 <button id="start-camera-btn" class="primary-btn">📷 Take Photo</button>
                 <p style="margin-top: 10px; color: #666; font-size: 14px;">Click to start camera</p>
             </div>
             
             <!-- CAMERA STATE -->
-            <div id="camera-state" class="state-container hidden">
+            <div id="camera-state" style="display: none;">
                 <div class="video-container">
                     <video id="camera-video" playsinline muted></video>
                 </div>
@@ -33,7 +33,7 @@ function initCameraWidget() {
             </div>
             
             <!-- PREVIEW STATE -->
-            <div id="preview-state" class="state-container hidden">
+            <div id="preview-state" style="display: none;">
                 <div class="preview-container">
                     <canvas id="photo-canvas"></canvas>
                 </div>
@@ -44,13 +44,13 @@ function initCameraWidget() {
             </div>
             
             <!-- UPLOADING STATE -->
-            <div id="uploading-state" class="state-container hidden">
+            <div id="uploading-state" style="display: none;">
                 <p class="uploading-text">Uploading photo...</p>
                 <div class="progress-bar"></div>
             </div>
             
             <!-- THUMBNAIL STATE - UPDATED FOR MULTIPLE PHOTOS -->
-            <div id="thumbnail-state" class="state-container hidden">
+            <div id="thumbnail-state" style="display: none;">
                 <p class="success-message">Photo uploaded successfully!</p>
                 
                 <!-- Action Buttons -->
@@ -59,7 +59,7 @@ function initCameraWidget() {
                     <button id="done-btn" class="primary-btn">✅ Done Uploading</button>
                 </div>
                 
-                <!-- Uploaded Photos Gallery -->
+                <!-- Uploaded Photos Gallery - FIXED VISIBILITY -->
                 <div id="uploaded-photos-container" class="photo-gallery">
                     <h4 class="gallery-title">Your Uploaded Photos:</h4>
                     <div id="uploaded-photos-list" class="uploaded-photos-list"></div>
@@ -127,17 +127,11 @@ function showState(stateName) {
     const states = ['initial', 'camera', 'preview', 'uploading', 'thumbnail'];
     states.forEach(state => {
         const element = document.getElementById(state + '-state');
-        if (element) {
-            element.classList.remove('visible');
-            element.classList.add('hidden');
-        }
+        if (element) element.style.display = 'none';
     });
     
     const targetElement = document.getElementById(stateName + '-state');
-    if (targetElement) {
-        targetElement.classList.remove('hidden');
-        targetElement.classList.add('visible');
-    }
+    if (targetElement) targetElement.style.display = 'block';
     
     // Update photos display when showing thumbnail state
     if (stateName === 'thumbnail') {
