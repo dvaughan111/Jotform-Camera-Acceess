@@ -41,11 +41,86 @@ button:disabled {
   gap: 8px;
 }
 
-#instantUpload .thumb img {
+.thumb {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.thumb:hover {
+  transform: scale(1.05);
+}
+
+.thumb img {
   width: 120px;
   height: auto;
   border-radius: 6px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.pdf-icon {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(255,0,0,0.7);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.8);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  max-width: 90%;
+  max-height: 90%;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.close {
+  position: absolute;
+  top: 15px;
+  right: 35px;
+  color: #f1f1f1;
+  font-size: 40px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.pdf-viewer {
+  width: 80vw;
+  height: 80vh;
+  border: none;
+}
+
+.file-upload {
+  margin: 15px 0;
+}
+
+.file-upload-label {
+  display: inline-block;
+  padding: 10px 16px;
+  background-color: #4c6ef5;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -57,12 +132,22 @@ button:disabled {
 <button id="startCamera">Start Camera</button>
 <button id="capturePhoto" disabled>Capture Photo</button>
 
+<div class="file-upload">
+  <label for="pdfUpload" class="file-upload-label">Upload PDF</label>
+  <input type="file" id="pdfUpload" accept=".pdf" style="display:none;">
+</div>
+
 <div id="instantUpload"></div>
+
+<div id="modal" class="modal">
+  <span class="close">&times;</span>
+  <div class="modal-content" id="modalContent"></div>
+</div>
 
 <script>
 // === CONFIG ===
-const cloudName = "YOUR_CLOUD_NAME"; // e.g. du0puu5mt
-const uploadPreset = "YOUR_UPLOAD_PRESET"; // must be unsigned preset
+const cloudName = "du0puu5mt";
+const uploadPreset = "jotform_widget_upload";
 
 // === Elements ===
 const video = document.getElementById('camera');
@@ -70,6 +155,10 @@ const canvas = document.getElementById('photoCanvas');
 const startCameraBtn = document.getElementById('startCamera');
 const capturePhotoBtn = document.getElementById('capturePhoto');
 const instantUploadDiv = document.getElementById('instantUpload');
+const pdfUpload = document.getElementById('pdfUpload');
+const modal = document.getElementById('modal');
+const modalContent = document.getElementById('modalContent');
+const closeModal = document.querySelector('.close');
 
 let stream;
 
@@ -107,7 +196,7 @@ capturePhotoBtn.addEventListener('click', () => {
       });
       const data = await res.json();
       if (data.secure_url) {
-        addThumbnail(data.secure_url);
+        addThumbnail(data.secure_url, 'image');
       } else {
         console.error('Cloudinary error', data);
         alert('Upload failed.');
@@ -119,12 +208,83 @@ capturePhotoBtn.addEventListener('click', () => {
   }, 'image/jpeg');
 });
 
-function addThumbnail(url) {
+// Handle PDF upload
+pdfUpload.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file && file.type === 'application/pdf') {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        // Generate a thumbnail for the PDF
+        const pdfThumbnail = await generatePdfThumbnail(file);
+        addThumbnail(pdfThumbnail, 'pdf', data.secure_url);
+      } else {
+        console.error('Cloudinary error', data);
+        alert('PDF upload failed.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('PDF upload error.');
+    }
+  } else {
+    alert('Please select a valid PDF file.');
+  }
+});
+
+// Generate a thumbnail for PDF files
+async function generatePdfThumbnail(file) {
+  // For a real implementation, you would use a PDF.js to generate a thumbnail
+  // For this example, we'll return a generic PDF icon
+  return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMTIwIDE1MCI+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEzMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSIyMCIgeT0iNDAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyI+UERGIEZJTEU8L3RleHQ+PHRleHQgeD0iMjAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiMzMzMiPkNsaWNrIHRvPC90ZXh0Pjx0ZXh0IHg9IjIwIiB5PSI5MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjMzMzIj52aWV3PC90ZXh0Pjwvc3ZnPg==';
+}
+
+function addThumbnail(thumbnailUrl, type, pdfUrl = null) {
   const thumb = document.createElement('div');
   thumb.className = 'thumb';
-  thumb.innerHTML = `<img src="${url}" alt="photo">`;
+  
+  if (type === 'pdf') {
+    thumb.innerHTML = `
+      <img src="${thumbnailUrl}" alt="pdf thumbnail">
+      <div class="pdf-icon">PDF</div>
+    `;
+    thumb.dataset.pdfUrl = pdfUrl;
+  } else {
+    thumb.innerHTML = `<img src="${thumbnailUrl}" alt="photo">`;
+  }
+  
+  thumb.addEventListener('click', () => {
+    if (type === 'pdf') {
+      modalContent.innerHTML = `
+        <embed class="pdf-viewer" src="${pdfUrl}" type="application/pdf">
+      `;
+    } else {
+      modalContent.innerHTML = `<img src="${thumbnailUrl}" style="max-width: 100%;">`;
+    }
+    modal.style.display = 'flex';
+  });
+  
   instantUploadDiv.appendChild(thumb);
 }
+
+// Close modal when clicking on X
+closeModal.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+// Close modal when clicking outside content
+modal.addEventListener('click', (e) => {
+  if (e.target === modal) {
+    modal.style.display = 'none';
+  }
+});
 </script>
 
 </body>
