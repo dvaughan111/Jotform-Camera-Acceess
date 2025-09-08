@@ -403,6 +403,9 @@
                 // Update the UI
                 updateUploadedPhotosDisplay();
                 showState('thumbnail');
+                
+                // Update JotForm field value for PDF thumbnails
+                updateJotFormValue();
             }
         }
 
@@ -451,6 +454,9 @@
                 // Update display
                 updateUploadedPhotosDisplay();
                 
+                // Update JotForm field value
+                updateJotFormValue();
+                
                 // If no photos left, go back to initial state
                 if (uploadedPhotos.length === 0) {
                     showState('initial');
@@ -458,12 +464,9 @@
             }
         }
 
-        // Handle form submission with proper PDF thumbnail formatting
-        JFCustomWidget.subscribe("submit", function(){
-            console.log("Form submitted, sending image data");
-            
-            // Prepare all image data for submission with proper PDF options
-            const submissionData = uploadedPhotos.map(photo => ({
+        function updateJotFormValue() {
+            // Format the data for JotForm PDF thumbnails
+            const formattedData = uploadedPhotos.map(photo => ({
                 url: photo.url,
                 fileName: photo.fileName,
                 pdfOptions: {
@@ -476,10 +479,33 @@
                 }
             }));
             
-            // Send as properly formatted data for PDF thumbnails
+            // Send to JotForm
+            JFCustomWidget.sendData({
+                value: JSON.stringify(formattedData)
+            });
+        }
+
+        // Handle form submission
+        JFCustomWidget.subscribe("submit", function(){
+            console.log("Form submitted, sending image data");
+            
+            // Update one last time before submission
+            updateJotFormValue();
+            
             var result = {
                 valid: true,
-                value: JSON.stringify(submissionData)
+                value: JSON.stringify(uploadedPhotos.map(photo => ({
+                    url: photo.url,
+                    fileName: photo.fileName,
+                    pdfOptions: {
+                        display: 'thumbnail',
+                        width: 'auto',
+                        height: 'auto',
+                        alignment: 'center',
+                        border: '1px solid #ccc',
+                        padding: '5px'
+                    }
+                })))
             };
             
             JFCustomWidget.sendSubmit(result);
