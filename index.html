@@ -401,8 +401,22 @@
                 uploadedPhotos.push(photoData);
                 
                 // Send the data to JotForm in real-time with proper PDF configuration
+                // The key fix: Create a proper string representation with PDF options
+                const photoDataForJotForm = {
+                    url: imageData,
+                    fileName: photoData.fileName,
+                    pdfOptions: {
+                        display: 'thumbnail',
+                        width: 'auto',
+                        height: 'auto',
+                        alignment: 'center',
+                        border: '1px solid #ccc',
+                        padding: '5px'
+                    }
+                };
+                
                 JFCustomWidget.sendData({ 
-                    value: imageData,
+                    value: JSON.stringify(photoDataForJotForm),
                     pdfOptions: {
                         display: 'thumbnail',
                         width: 'auto',
@@ -477,8 +491,8 @@
             
             // Prepare all image data for submission with proper PDF options
             const submissionData = uploadedPhotos.map(photo => ({
-                file: photo.url,
-                filename: photo.fileName,
+                url: photo.url,
+                fileName: photo.fileName,
                 pdfOptions: {
                     display: 'thumbnail',
                     width: 'auto',
@@ -489,9 +503,10 @@
                 }
             }));
             
+            // The key fix: Send as a properly formatted string
             var result = {
                 valid: true, // Mark the widget as valid
-                value: submissionData // Send all image data with PDF options
+                value: JSON.stringify(submissionData) // Send as JSON string
             };
             
             // Send the final result to the parent form
