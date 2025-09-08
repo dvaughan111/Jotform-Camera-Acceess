@@ -14,128 +14,58 @@ function initCameraWidget() {
     
     // Create the interface with multiple photo support
     container.innerHTML = `
-        <div class="widget-container" style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px; min-height: 100px;">
+        <div class="widget-container">
             <!-- INITIAL STATE -->
-            <div id="initial-state" style="display: block;">
-                <button id="start-camera-btn" style="
-                    background: #007bff; 
-                    color: white; 
-                    padding: 15px 30px; 
-                    border: none; 
-                    border-radius: 5px; 
-                    font-size: 16px; 
-                    cursor: pointer;
-                    width: 200px;
-                    margin: 10px;
-                ">📷 Take Photo</button>
+            <div id="initial-state" class="state-container visible">
+                <button id="start-camera-btn" class="primary-btn">📷 Take Photo</button>
                 <p style="margin-top: 10px; color: #666; font-size: 14px;">Click to start camera</p>
             </div>
             
             <!-- CAMERA STATE -->
-            <div id="camera-state" style="display: none;">
-                <div style="background: #000; width: 100%; height: 300px; margin-bottom: 15px; border-radius: 5px; position: relative;">
-                    <video id="camera-video" style="width: 100%; height: 100%; object-fit: cover;" playsinline muted></video>
+            <div id="camera-state" class="state-container hidden">
+                <div class="video-container">
+                    <video id="camera-video" playsinline muted></video>
                 </div>
-                <button id="capture-btn" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">📸 Capture</button>
-                <button id="cancel-btn" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">✖ Cancel</button>
+                <div class="button-row">
+                    <button id="capture-btn" class="success-btn">📸 Capture</button>
+                    <button id="cancel-btn" class="secondary-btn">✖ Cancel</button>
+                </div>
             </div>
             
             <!-- PREVIEW STATE -->
-            <div id="preview-state" style="display: none;">
-                <canvas id="photo-canvas" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 15px;"></canvas><br>
-                <button id="approve-btn" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">✓ Approve</button>
-                <button id="retake-btn" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">↻ Retake</button>
+            <div id="preview-state" class="state-container hidden">
+                <div class="preview-container">
+                    <canvas id="photo-canvas"></canvas>
+                </div>
+                <div class="preview-actions">
+                    <button id="approve-btn" class="success-btn">✓ Approve</button>
+                    <button id="retake-btn" class="secondary-btn">↻ Retake</button>
+                </div>
             </div>
             
             <!-- UPLOADING STATE -->
-            <div id="uploading-state" style="display: none;">
-                <p style="font-size: 16px; color: #007bff;">Uploading photo...</p>
-                <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
-                    <div style="width: 100%; height: 100%; background: #007bff; animation: pulse 1.5s infinite;"></div>
-                </div>
+            <div id="uploading-state" class="state-container hidden">
+                <p class="uploading-text">Uploading photo...</p>
+                <div class="progress-bar"></div>
             </div>
             
             <!-- THUMBNAIL STATE - UPDATED FOR MULTIPLE PHOTOS -->
-            <div id="thumbnail-state" style="display: none;">
-                <p style="color: green; font-weight: bold; margin-bottom: 15px; font-size: 16px;">Photo uploaded successfully!</p>
+            <div id="thumbnail-state" class="state-container hidden">
+                <p class="success-message">Photo uploaded successfully!</p>
                 
                 <!-- Action Buttons -->
-                <div style="margin: 20px 0; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ddd;">
-                    <button id="add-another-btn" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 8px; cursor: pointer; font-size: 14px;">
-                        📷 Add Another Photo
-                    </button>
-                    <button id="done-btn" style="background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 8px; cursor: pointer; font-size: 14px;">
-                        ✅ Done Uploading
-                    </button>
+                <div class="actions-container">
+                    <button id="add-another-btn" class="success-btn">📷 Add Another Photo</button>
+                    <button id="done-btn" class="primary-btn">✅ Done Uploading</button>
                 </div>
                 
-                <!-- Uploaded Photos Gallery - FIXED VISIBILITY -->
-                <div id="uploaded-photos-container" style="margin-top: 25px; padding: 20px; background: #fff; border-radius: 8px; border: 1px solid #ddd; display: block;">
-                    <h4 style="margin-bottom: 20px; color: #333; font-size: 18px; font-weight: bold;">Your Uploaded Photos:</h4>
-                    <div id="uploaded-photos-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; align-items: center; min-height: 100px;"></div>
+                <!-- Uploaded Photos Gallery -->
+                <div id="uploaded-photos-container" class="photo-gallery">
+                    <h4 class="gallery-title">Your Uploaded Photos:</h4>
+                    <div id="uploaded-photos-list" class="uploaded-photos-list"></div>
                 </div>
             </div>
         </div>
-        
-        <style>
-            @keyframes pulse {
-                0% { opacity: 0.6; }
-                50% { opacity: 1; }
-                100% { opacity: 0.6; }
-            }
-            
-            .photo-thumbnail {
-                position: relative;
-                cursor: pointer;
-                margin: 8px;
-                transition: transform 0.2s ease;
-            }
-            
-            .photo-thumbnail:hover {
-                transform: scale(1.05);
-            }
-            
-            .photo-thumbnail img {
-                width: 100px;
-                height: 100px;
-                object-fit: cover;
-                border-radius: 8px;
-                border: 3px solid #007bff;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            }
-            
-            .delete-btn {
-                position: absolute;
-                top: -10px;
-                right: -10px;
-                background: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 50%;
-                width: 28px;
-                height: 28px;
-                font-size: 14px;
-                cursor: pointer;
-                font-weight: bold;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                line-height: 1;
-            }
-            
-            .delete-btn:hover {
-                background: #c82333;
-                transform: scale(1.1);
-            }
-            
-            .empty-state {
-                color: #666;
-                font-style: italic;
-                padding: 20px;
-                text-align: center;
-            }
-        </style>
     `;
     
     console.log('✅ Interface created');
@@ -197,11 +127,17 @@ function showState(stateName) {
     const states = ['initial', 'camera', 'preview', 'uploading', 'thumbnail'];
     states.forEach(state => {
         const element = document.getElementById(state + '-state');
-        if (element) element.style.display = 'none';
+        if (element) {
+            element.classList.remove('visible');
+            element.classList.add('hidden');
+        }
     });
     
     const targetElement = document.getElementById(stateName + '-state');
-    if (targetElement) targetElement.style.display = 'block';
+    if (targetElement) {
+        targetElement.classList.remove('hidden');
+        targetElement.classList.add('visible');
+    }
     
     // Update photos display when showing thumbnail state
     if (stateName === 'thumbnail') {
@@ -370,18 +306,24 @@ function updateUploadedPhotosDisplay() {
         photoElement.className = 'photo-thumbnail';
         photoElement.innerHTML = `
             <img src="${photo.url}" alt="Photo ${index + 1}">
-            <button class="delete-btn" onclick="event.stopPropagation(); window.removePhoto(${index})">✕</button>
+            <button class="photo-delete-btn" data-index="${index}">✕</button>
         `;
         
         // Click to view full image
         photoElement.onclick = () => window.open(photo.url, '_blank');
         
+        // Delete button handler
+        const deleteBtn = photoElement.querySelector('.photo-delete-btn');
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            removePhoto(index);
+        };
+        
         photosList.appendChild(photoElement);
     });
 }
 
-// Global function to remove photos
-window.removePhoto = function(index) {
+function removePhoto(index) {
     if (confirm('Are you sure you want to remove this photo?')) {
         // Revoke the object URL to free memory
         URL.revokeObjectURL(uploadedPhotos[index].url);
@@ -416,7 +358,7 @@ window.removePhoto = function(index) {
             showState('initial');
         }
     }
-};
+}
 
 // Initialize
 function tryInit() {
