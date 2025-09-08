@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Widget</title>
-    <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*, autoplay=*">
+    <meta http-equiv="Permissions-Policy" content="autoplay=(self), camera=(self), fullscreen=(self), encrypted-media=(self)">
+    <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -14,7 +15,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 20px;
+            padding: 15px;
             background: #f8f9fa;
         }
         
@@ -174,6 +175,16 @@
             margin: 15px 0;
         }
         
+        .permission-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            color: #856404;
+            display: none;
+        }
+        
         @media (max-width: 600px) {
             .state-container {
                 padding: 20px 15px;
@@ -197,6 +208,10 @@
 </head>
 <body>
     <div class="widget-container">
+        <div class="permission-warning" id="permission-warning">
+            Camera permissions are required to use this feature. Please allow camera access when prompted.
+        </div>
+        
         <div id="initial-state" class="state-container">
             <button id="start-camera-btn" class="btn btn-primary">Take Photo</button>
         </div>
@@ -233,6 +248,11 @@
                 <button id="done-btn" class="btn btn-primary">Done</button>
             </div>
         </div>
+        
+        <div id="error-state" class="state-container" style="display: none;">
+            <p>Unable to access camera. Please check your permissions and try again.</p>
+            <button id="retry-btn" class="btn btn-primary">Retry</button>
+        </div>
     </div>
 
     <script>
@@ -241,10 +261,11 @@
         let currentStream = null;
         let uploadedPhotos = [];
 
-        function initCameraWidget() {
-            console.log('Initializing camera widget');
+        // Initialize when JotForm is ready
+        JFCustomWidget.subscribe("ready", function(){
+            console.log("Widget is ready.");
             setupClickHandlers();
-        }
+        });
 
         function setupClickHandlers() {
             document.getElementById('start-camera-btn').addEventListener('click', function(e) {
@@ -282,10 +303,15 @@
                 e.preventDefault();
                 alert('You have finished uploading photos. You can now submit the form.');
             });
+            
+            document.getElementById('retry-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                showState('initial');
+            });
         }
 
         function showState(stateName) {
-            const states = ['initial', 'camera', 'preview', 'thumbnail'];
+            const states = ['initial', 'camera', 'preview', 'thumbnail', 'error'];
             states.forEach(state => {
                 const element = document.getElementById(state + '-state');
                 if (element) element.style.display = 'none';
@@ -294,14 +320,18 @@
             const targetElement = document.getElementById(stateName + '-state');
             if (targetElement) targetElement.style.display = 'flex';
             
-            if (stateName === 'thumbnail') {
-                updateUploadedPhotosDisplay();
+            // Show permission warning when accessing camera
+            if (stateName === 'initial') {
+                document.getElementById('permission-warning').style.display = 'block';
             }
         }
 
         async function startCamera() {
             try {
                 showState('camera');
+                
+                // Show permission warning
+                document.getElementById('permission-warning').style.display = 'block';
                 
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { 
@@ -311,19 +341,24 @@
                     }
                 });
                 
+                // Hide warning after successful access
+                document.getElementById('permission-warning').style.display = 'none';
+                
                 currentStream = stream;
                 const video = document.getElementById('camera-video');
                 if (video) {
                     video.srcObject = stream;
-                    video.onloadedmetadata = () => {
-                        video.play().catch(error => {
+                    // Handle autoplay restrictions properly
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
                             console.log("Autoplay prevented:", error);
                         });
-                    };
+                    }
                 }
             } catch (error) {
-                alert('Camera error: ' + error.message);
-                showState('initial');
+                console.error('Camera error:', error);
+                showState('error');
             }
         }
 
@@ -353,35 +388,24 @@
         function approvePhoto() {
             const canvas = document.getElementById('photo-canvas');
             if (canvas) {
-                // Use a smaller image size for faster processing
-                const resizedCanvas = document.createElement('canvas');
-                const ctx = resizedCanvas.getContext('2d');
+                // Get the base64 data URL
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
                 
-                // Set smaller dimensions for faster processing
-                resizedCanvas.width = 800;
-                resizedCanvas.height = 600;
+                // Add to uploaded photos array
+                const photoData = {
+                    url: imageData,
+                    timestamp: Date.now(),
+                    fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`
+                };
                 
-                // Draw the resized image
-                ctx.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
+                uploadedPhotos.push(photoData);
                 
-                resizedCanvas.toBlob(blob => {
-                    const url = URL.createObjectURL(blob);
-                    
-                    // Add to uploaded photos array
-                    const photoData = {
-                        url: url,
-                        blob: blob,
-                        timestamp: Date.now(),
-                        fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`
-                    };
-                    
-                    uploadedPhotos.push(photoData);
-                    
-                    // Update the UI
-                    updateUploadedPhotosDisplay();
-                    showState('thumbnail');
-                    
-                }, 'image/jpeg', 0.8);
+                // Send the data to JotForm in real-time
+                JFCustomWidget.sendData({ value: imageData });
+                
+                // Update the UI
+                updateUploadedPhotosDisplay();
+                showState('thumbnail');
             }
         }
 
@@ -424,9 +448,6 @@
 
         function removePhoto(index) {
             if (confirm('Are you sure you want to remove this photo?')) {
-                // Revoke the object URL to free memory
-                URL.revokeObjectURL(uploadedPhotos[index].url);
-                
                 // Remove from array
                 uploadedPhotos.splice(index, 1);
                 
@@ -440,12 +461,22 @@
             }
         }
 
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initCameraWidget);
-        } else {
-            initCameraWidget();
-        }
+        // This is the critical part - handle form submission
+        JFCustomWidget.subscribe("submit", function(){
+            console.log("Form submitted, sending image data");
+            
+            // Prepare all image data for submission
+            const imageDataArray = uploadedPhotos.map(photo => photo.url);
+            
+            var result = {
+                valid: true, // Mark the widget as valid
+                value: imageDataArray // Send all image data
+            };
+            
+            // Send the final result to the parent form
+            JFCustomWidget.sendSubmit(result);
+        });
+
     </script>
 </body>
 </html>
