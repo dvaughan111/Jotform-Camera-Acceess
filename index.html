@@ -400,8 +400,18 @@
                 
                 uploadedPhotos.push(photoData);
                 
-                // Send the data to JotForm in real-time
-                JFCustomWidget.sendData({ value: imageData });
+                // Send the data to JotForm in real-time with proper PDF configuration
+                JFCustomWidget.sendData({ 
+                    value: imageData,
+                    pdfOptions: {
+                        display: 'thumbnail',
+                        width: 'auto',
+                        height: 'auto',
+                        alignment: 'center',
+                        border: '1px solid #ccc',
+                        padding: '5px'
+                    }
+                });
                 
                 // Update the UI
                 updateUploadedPhotosDisplay();
@@ -465,12 +475,23 @@
         JFCustomWidget.subscribe("submit", function(){
             console.log("Form submitted, sending image data");
             
-            // Prepare all image data for submission
-            const imageDataArray = uploadedPhotos.map(photo => photo.url);
+            // Prepare all image data for submission with proper PDF options
+            const submissionData = uploadedPhotos.map(photo => ({
+                file: photo.url,
+                filename: photo.fileName,
+                pdfOptions: {
+                    display: 'thumbnail',
+                    width: 'auto',
+                    height: 'auto',
+                    alignment: 'center',
+                    border: '1px solid #ccc',
+                    padding: '5px'
+                }
+            }));
             
             var result = {
                 valid: true, // Mark the widget as valid
-                value: imageDataArray // Send all image data
+                value: submissionData // Send all image data with PDF options
             };
             
             // Send the final result to the parent form
