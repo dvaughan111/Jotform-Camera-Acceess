@@ -1,291 +1,331 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camera Upload Widget</title>
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f9f9f9;
-  padding: 20px;
-  text-align: center;
-}
-
-video, canvas {
-  max-width: 100%;
-  border-radius: 8px;
-}
-
-button {
-  background-color: #4c6ef5;
-  color: #fff;
-  border: none;
-  padding: 10px 16px;
-  margin: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 15px;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-#instantUpload {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 15px;
-  gap: 8px;
-}
-
-.thumb {
-  position: relative;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.thumb:hover {
-  transform: scale(1.05);
-}
-
-.thumb img {
-  width: 120px;
-  height: auto;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.pdf-icon {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  background: rgba(255,0,0,0.7);
-  color: white;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0,0,0,0.8);
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-content {
-  max-width: 90%;
-  max-height: 90%;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-}
-
-.close {
-  position: absolute;
-  top: 15px;
-  right: 35px;
-  color: #f1f1f1;
-  font-size: 40px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.pdf-viewer {
-  width: 80vw;
-  height: 80vh;
-  border: none;
-}
-
-.file-upload {
-  margin: 15px 0;
-}
-
-.file-upload-label {
-  display: inline-block;
-  padding: 10px 16px;
-  background-color: #4c6ef5;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Capture</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .camera-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        video {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #222;
+        }
+        
+        button {
+            background-color: #4c6ef5;
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #3b5bdb;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        #approvePhoto {
+            background-color: #40c057;
+        }
+        
+        #approvePhoto:hover {
+            background-color: #2f9e44;
+        }
+        
+        #discardPhoto {
+            background-color: #fa5252;
+        }
+        
+        #discardPhoto:hover {
+            background-color: #e03131;
+        }
+        
+        .thumbnails-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        #thumbnails {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .thumbnail {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(250, 82, 82, 0.8);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .success-message {
+            background-color: #d3f9d8;
+            color: #2b8a3e;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .camera-controls button {
+            flex: 1;
+        }
+        
+        .capture-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+    </style>
 </head>
 <body>
+    <div class="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <button id="takePhoto" class="capture-btn">
+            <i class="fas fa-camera"></i> Take Photo
+        </button>
+        <div class="camera-controls" style="display: none;">
+            <button id="approvePhoto">
+                <i class="fas fa-check"></i> Approve
+            </button>
+            <button id="discardPhoto">
+                <i class="fas fa-times"></i> Discard
+            </button>
+        </div>
+        <div class="success-message" id="successMessage">
+            Photo uploaded successfully!
+        </div>
+    </div>
 
-<video id="camera" autoplay playsinline></video><br>
-<canvas id="photoCanvas" style="display:none;"></canvas><br>
+    <div class="thumbnails-container">
+        <div id="thumbnails"></div>
+        <button id="addAnother" style="display: none;">
+            <i class="fas fa-plus"></i> Add Another Image
+        </button>
+    </div>
 
-<button id="startCamera">Start Camera</button>
-<button id="capturePhoto" disabled>Capture Photo</button>
+    <canvas id="canvas" style="display: none;"></canvas>
 
-<div class="file-upload">
-  <label for="pdfUpload" class="file-upload-label">Upload PDF</label>
-  <input type="file" id="pdfUpload" accept=".pdf" style="display:none;">
-</div>
+    <script>
+        // Configuration
+        const cloudName = "du0puu5mt";
+        const uploadPreset = "jotform_widget_upload";
 
-<div id="instantUpload"></div>
+        // Elements
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const takePhotoBtn = document.getElementById('takePhoto');
+        const approvePhotoBtn = document.getElementById('approvePhoto');
+        const discardPhotoBtn = document.getElementById('discardPhoto');
+        const addAnotherBtn = document.getElementById('addAnother');
+        const thumbnailsContainer = document.getElementById('thumbnails');
+        const successMessage = document.getElementById('successMessage');
+        const cameraControls = document.querySelector('.camera-controls');
 
-<div id="modal" class="modal">
-  <span class="close">&times;</span>
-  <div class="modal-content" id="modalContent"></div>
-</div>
+        let stream = null;
+        let currentPhotoDataUrl = null;
 
-<script>
-// === CONFIG ===
-const cloudName = "du0puu5mt";
-const uploadPreset = "jotform_widget_upload";
+        // Initialize camera when Take Photo button is clicked
+        takePhotoBtn.addEventListener('click', async () => {
+            try {
+                if (!stream) {
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: 'environment' }, 
+                        audio: false 
+                    });
+                    video.srcObject = stream;
+                }
+                
+                // Capture photo
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                currentPhotoDataUrl = canvas.toDataURL('image/jpeg');
+                
+                // Show approve/discard buttons
+                cameraControls.style.display = 'flex';
+                takePhotoBtn.style.display = 'none';
+                
+            } catch (err) {
+                alert('Error accessing camera: ' + err.message);
+            }
+        });
 
-// === Elements ===
-const video = document.getElementById('camera');
-const canvas = document.getElementById('photoCanvas');
-const startCameraBtn = document.getElementById('startCamera');
-const capturePhotoBtn = document.getElementById('capturePhoto');
-const instantUploadDiv = document.getElementById('instantUpload');
-const pdfUpload = document.getElementById('pdfUpload');
-const modal = document.getElementById('modal');
-const modalContent = document.getElementById('modalContent');
-const closeModal = document.querySelector('.close');
+        // Approve photo and upload
+        approvePhotoBtn.addEventListener('click', async () => {
+            if (!currentPhotoDataUrl) return;
+            
+            try {
+                // Convert data URL to blob
+                const response = await fetch(currentPhotoDataUrl);
+                const blob = await response.blob();
+                
+                // Upload to Cloudinary
+                const formData = new FormData();
+                formData.append('file', blob, 'photo.jpg');
+                formData.append('upload_preset', uploadPreset);
+                
+                const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await uploadResponse.json();
+                
+                if (data.secure_url) {
+                    // Add thumbnail
+                    addThumbnail(data.secure_url);
+                    
+                    // Show success message
+                    successMessage.style.display = 'block';
+                    setTimeout(() => {
+                        successMessage.style.display = 'none';
+                    }, 3000);
+                    
+                    // Reset camera for next photo
+                    resetCamera();
+                    
+                    // Show add another button
+                    addAnotherBtn.style.display = 'block';
+                } else {
+                    throw new Error('Upload failed');
+                }
+            } catch (err) {
+                alert('Upload error: ' + err.message);
+                resetCamera();
+            }
+        });
 
-let stream;
+        // Discard photo
+        discardPhotoBtn.addEventListener('click', () => {
+            resetCamera();
+        });
 
-// Start camera
-startCameraBtn.addEventListener('click', async () => {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    capturePhotoBtn.disabled = false;
-  } catch (err) {
-    alert('Camera error: ' + err.message);
-  }
-});
+        // Add another image
+        addAnotherBtn.addEventListener('click', () => {
+            takePhotoBtn.style.display = 'block';
+            cameraControls.style.display = 'none';
+            addAnotherBtn.style.display = 'none';
+        });
 
-// Capture and upload photo
-capturePhotoBtn.addEventListener('click', () => {
-  if (!stream) return;
+        // Add thumbnail to display
+        function addThumbnail(url) {
+            const thumbnailDiv = document.createElement('div');
+            thumbnailDiv.className = 'thumbnail';
+            
+            thumbnailDiv.innerHTML = `
+                <img src="${url}" alt="Captured photo">
+                <div class="delete-btn" onclick="deleteThumbnail(this)">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
+            
+            thumbnailsContainer.appendChild(thumbnailDiv);
+        }
 
-  const ctx = canvas.getContext('2d');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0);
+        // Delete thumbnail
+        function deleteThumbnail(element) {
+            element.parentElement.remove();
+        }
 
-  canvas.toBlob(async (blob) => {
-    if (!blob) return;
+        // Reset camera
+        function resetCamera() {
+            currentPhotoDataUrl = null;
+            cameraControls.style.display = 'none';
+            takePhotoBtn.style.display = 'block';
+            
+            // Restart camera
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+            }
+        }
 
-    const formData = new FormData();
-    formData.append('file', blob, 'photo.jpg');
-    formData.append('upload_preset', uploadPreset);
-
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-      if (data.secure_url) {
-        addThumbnail(data.secure_url, 'image');
-      } else {
-        console.error('Cloudinary error', data);
-        alert('Upload failed.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Upload error.');
-    }
-  }, 'image/jpeg');
-});
-
-// Handle PDF upload
-pdfUpload.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (file && file.type === 'application/pdf') {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-      if (data.secure_url) {
-        // Generate a thumbnail for the PDF
-        const pdfThumbnail = await generatePdfThumbnail(file);
-        addThumbnail(pdfThumbnail, 'pdf', data.secure_url);
-      } else {
-        console.error('Cloudinary error', data);
-        alert('PDF upload failed.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('PDF upload error.');
-    }
-  } else {
-    alert('Please select a valid PDF file.');
-  }
-});
-
-// Generate a thumbnail for PDF files
-async function generatePdfThumbnail(file) {
-  // For a real implementation, you would use a PDF.js to generate a thumbnail
-  // For this example, we'll return a generic PDF icon
-  return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMTIwIDE1MCI+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEzMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSIyMCIgeT0iNDAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyI+UERGIEZJTEU8L3RleHQ+PHRleHQgeD0iMjAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiMzMzMiPkNsaWNrIHRvPC90ZXh0Pjx0ZXh0IHg9IjIwIiB5PSI5MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjMzMzIj52aWV3PC90ZXh0Pjwvc3ZnPg==';
-}
-
-function addThumbnail(thumbnailUrl, type, pdfUrl = null) {
-  const thumb = document.createElement('div');
-  thumb.className = 'thumb';
-  
-  if (type === 'pdf') {
-    thumb.innerHTML = `
-      <img src="${thumbnailUrl}" alt="pdf thumbnail">
-      <div class="pdf-icon">PDF</div>
-    `;
-    thumb.dataset.pdfUrl = pdfUrl;
-  } else {
-    thumb.innerHTML = `<img src="${thumbnailUrl}" alt="photo">`;
-  }
-  
-  thumb.addEventListener('click', () => {
-    if (type === 'pdf') {
-      modalContent.innerHTML = `
-        <embed class="pdf-viewer" src="${pdfUrl}" type="application/pdf">
-      `;
-    } else {
-      modalContent.innerHTML = `<img src="${thumbnailUrl}" style="max-width: 100%;">`;
-    }
-    modal.style.display = 'flex';
-  });
-  
-  instantUploadDiv.appendChild(thumb);
-}
-
-// Close modal when clicking on X
-closeModal.addEventListener('click', () => {
-  modal.style.display = 'none';
-});
-
-// Close modal when clicking outside content
-modal.addEventListener('click', (e) => {
-  if (e.target === modal) {
-    modal.style.display = 'none';
-  }
-});
-</script>
-
+        // Clean up when leaving page
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+        });
+    </script>
 </body>
 </html>
