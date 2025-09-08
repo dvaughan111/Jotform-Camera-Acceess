@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Widget - PDF Thumbnail Solution</title>
-    <meta http-equiv="Permissions-Policy" content="autoplay=(self), camera=(self), fullscreen=(self), encrypted-media=(self)">
-    <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
+    <title>JotForm PDF Thumbnail Solution</title>
     <style>
         * {
             box-sizing: border-box;
@@ -14,267 +12,211 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 20px;
-            background: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            min-height: 100vh;
         }
         
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
         }
         
         header {
             text-align: center;
-            padding: 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 30px 0;
+            margin-bottom: 30px;
         }
         
         h1 {
+            font-size: 2.8rem;
             color: #2c3e50;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
         
-        .description {
+        .subtitle {
+            font-size: 1.2rem;
             color: #7f8c8d;
             max-width: 800px;
             margin: 0 auto;
         }
         
-        .widget-section {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
-        }
-        
-        .widget-container {
-            flex: 1;
-            min-width: 350px;
+        .card {
             background: white;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .solution-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .solution-section {
+                grid-template-columns: 1fr;
+            }
         }
         
         .explanation {
-            flex: 1;
-            min-width: 350px;
-            background: white;
-            border-radius: 12px;
             padding: 25px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
         
-        .state-container {
-            width: 100%;
+        .code-section {
+            background: #2d3436;
+            color: #dfe6e9;
+            border-radius: 8px;
             padding: 25px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 350px;
+            font-family: 'Fira Code', monospace;
+            overflow-x: auto;
         }
         
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 10px;
-        }
-        
-        .btn-primary {
-            background: #4a6cf7;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #3b5be3;
-        }
-        
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #218838;
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-        
-        .video-container {
-            width: 100%;
-            height: 280px;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        
-        #camera-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .preview-container {
-            width: 100%;
-            height: 280px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px dashed #dee2e6;
-        }
-        
-        #photo-canvas {
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 6px;
-        }
-        
-        .thumbnail-container {
-            position: relative;
-            display: inline-block;
-            margin: 12px;
-        }
-        
-        .thumbnail-image {
-            width: 120px;
-            height: 120px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 3px solid #4a6cf7;
-        }
-        
-        .delete-btn {
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            width: 28px;
-            height: 28px;
-            border: none;
-            border-radius: 50%;
-            background: #dc3545;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .delete-btn:hover {
-            background: #c82333;
-        }
-        
-        .uploaded-photos-container {
-            margin: 25px 0;
-            width: 100%;
-        }
-        
-        .uploaded-photos-list {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin: 15px 0;
-        }
-        
-        .success-message {
-            font-size: 18px;
-            color: #28a745;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-        
-        .btn-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            margin: 15px 0;
-        }
-        
-        .permission-warning {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 4px;
-            padding: 10px;
-            margin: 10px 0;
-            color: #856404;
-            display: none;
-        }
-        
-        .explanation h3 {
+        h2 {
             color: #2c3e50;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
         }
         
-        .explanation ul {
-            padding-left: 20px;
+        h3 {
+            color: #2980b9;
+            margin: 25px 0 15px 0;
+        }
+        
+        p {
             margin-bottom: 15px;
         }
         
-        .explanation li {
-            margin-bottom: 8px;
+        ul {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        li {
+            margin-bottom: 10px;
         }
         
         .code {
-            background: #f8f9fa;
+            background: rgba(255, 255, 255, 0.1);
             padding: 15px;
-            border-radius: 6px;
-            font-family: monospace;
-            overflow-x: auto;
+            border-radius: 5px;
             margin: 15px 0;
+            overflow-x: auto;
         }
         
-        @media (max-width: 800px) {
-            .widget-section {
-                flex-direction: column;
+        .keyword {
+            color: #fd79a8;
+        }
+        
+        .string {
+            color: #fab1a0;
+        }
+        
+        .comment {
+            color: #636e72;
+        }
+        
+        .number {
+            color: #74b9ff;
+        }
+        
+        .demo-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .demo-section {
+                grid-template-columns: 1fr;
             }
         }
         
-        @media (max-width: 600px) {
-            .state-container {
-                padding: 20px 15px;
-            }
-            
-            .video-container, .preview-container {
-                height: 240px;
-            }
-            
-            .btn {
-                padding: 10px 20px;
-                font-size: 15px;
-            }
-            
-            .thumbnail-image {
-                width: 100px;
-                height: 100px;
-            }
+        .upload-box {
+            border: 3px dashed #3498db;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-box:hover {
+            background: #e8f4fc;
+            border-color: #2980b9;
+        }
+        
+        .upload-icon {
+            font-size: 60px;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result-preview {
+            background: #2d3436;
+            border-radius: 8px;
+            padding: 20px;
+            color: white;
+            height: 100%;
+        }
+        
+        .thumbnail-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .thumbnail {
+            border: 2px solid #636e72;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            background: #3c4245;
+        }
+        
+        .thumbnail img {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+        
+        .thumbnail-title {
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #7f8c8d;
         }
     </style>
 </head>
@@ -282,358 +224,172 @@
     <div class="container">
         <header>
             <h1>JotForm PDF Thumbnail Solution</h1>
-            <p class="description">This widget captures photos and ensures they display as clickable thumbnails in your PDF documents with proper formatting and styling.</p>
+            <p class="subtitle">Complete implementation for displaying clickable image thumbnails in your PDF documents</p>
         </header>
-        
-        <div class="widget-section">
-            <div class="widget-container">
-                <div class="permission-warning" id="permission-warning">
-                    Camera permissions are required to use this feature. Please allow camera access when prompted.
-                </div>
+
+        <div class="card">
+            <h2>The Problem: Images Not Showing in PDF</h2>
+            <p>When using JotForm, you might encounter an issue where images appear as <code>[object Object]</code> or blank spaces in your PDF output instead of proper thumbnails.</p>
+            <p>This happens because JotForm requires a specific data structure to properly render images in PDFs.</p>
+        </div>
+
+        <div class="solution-section">
+            <div class="card explanation">
+                <h2>The Solution</h2>
+                <p>To ensure images display as clickable thumbnails in your PDF, you need to provide JotForm with properly formatted data that includes:</p>
                 
-                <div id="initial-state" class="state-container">
-                    <button id="start-camera-btn" class="btn btn-primary">Take Photo</button>
-                </div>
-                
-                <div id="camera-state" class="state-container" style="display: none;">
-                    <div class="video-container">
-                        <video id="camera-video" playsinline muted></video>
-                    </div>
-                    <div class="btn-container">
-                        <button id="capture-btn" class="btn btn-success">Capture Photo</button>
-                        <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
-                    </div>
-                </div>
-                
-                <div id="preview-state" class="state-container" style="display: none;">
-                    <div class="preview-container">
-                        <canvas id="photo-canvas"></canvas>
-                    </div>
-                    <div class="btn-container">
-                        <button id="approve-btn" class="btn btn-success">Approve & Upload</button>
-                        <button id="retake-btn" class="btn btn-secondary">Retake Photo</button>
-                    </div>
-                </div>
-                
-                <div id="thumbnail-state" class="state-container" style="display: none;">
-                    <p class="success-message">Photo uploaded successfully!</p>
-                    
-                    <div class="uploaded-photos-container">
-                        <div id="uploaded-photos-list" class="uploaded-photos-list"></div>
-                    </div>
-                    
-                    <div class="btn-container">
-                        <button id="add-another-btn" class="btn btn-success">Add Another Photo</button>
-                        <button id="done-btn" class="btn btn-primary">Done</button>
-                    </div>
-                </div>
-                
-                <div id="error-state" class="state-container" style="display: none;">
-                    <p>Unable to access camera. Please check your permissions and try again.</p>
-                    <button id="retry-btn" class="btn btn-primary">Retry</button>
-                </div>
-            </div>
-            
-            <div class="explanation">
-                <h2>Why This Works for JotForm PDFs</h2>
-                <p>The key to displaying images as thumbnails in JotForm PDFs is using the correct data structure when submitting the form data.</p>
-                
-                <h3>The Problem</h3>
-                <p>When you submit <code>[object Object]</code> to JotForm, it can't interpret the image data correctly for PDF generation.</p>
-                
-                <h3>The Solution</h3>
-                <p>We need to provide JotForm with a properly formatted data structure that includes:</p>
+                <h3>1. Correct Data Structure</h3>
+                <p>Each image must be submitted with these properties:</p>
                 <ul>
-                    <li>The image URL or base64 data</li>
-                    <li>Filename for the image</li>
-                    <li>PDF display options as a separate property</li>
+                    <li><strong>url</strong>: The image URL or base64 data</li>
+                    <li><strong>fileName</strong>: A descriptive filename</li>
+                    <li><strong>pdfOptions</strong>: Special instructions for PDF rendering</li>
                 </ul>
                 
-                <h3>PDF Display Options</h3>
-                <div class="code">
-{
-  display: 'thumbnail',
-  width: 'auto',
-  height: 'auto', 
-  alignment: 'center',
-  border: '1px solid #ccc',
-  padding: '5px'
-}
-                </div>
+                <h3>2. Proper PDF Options</h3>
+                <p>The pdfOptions object must include these properties:</p>
+                <ul>
+                    <li><code>display: 'thumbnail'</code> - Shows as thumbnail instead of link</li>
+                    <li><code>width: 'auto'</code> and <code>height: 'auto'</code> - Maintains aspect ratio</li>
+                    <li><code>alignment: 'center'</code> - Centers the thumbnail</li>
+                    <li><code>border: '1px solid #ccc'</code> - Adds a subtle border</li>
+                    <li><code>padding: '5px'</code> - Adds spacing around the thumbnail</li>
+                </ul>
                 
-                <h3>Data Submission Format</h3>
-                <p>Each image should be submitted with this structure:</p>
+                <h3>3. Stringified JSON</h3>
+                <p>You must stringify your image data array using <code>JSON.stringify()</code> before submitting to JotForm.</p>
+            </div>
+            
+            <div class="card code-section">
+                <h2>Implementation Code</h2>
                 <div class="code">
-{
-  url: 'data:image/jpeg;base64,...',
-  fileName: 'photo-123456789.jpg',
-  pdfOptions: { ... }
-}
+                    <span class="comment">// Sample image data structure for JotForm</span><br>
+                    <span class="keyword">const</span> imageData = [<br>
+                    &nbsp;&nbsp;{<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;url: <span class="string">'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...'</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;fileName: <span class="string">'product-photo-12345.jpg'</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;pdfOptions: {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;display: <span class="string">'thumbnail'</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;width: <span class="string">'auto'</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;height: <span class="string">'auto'</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;alignment: <span class="string">'center'</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;border: <span class="string">'1px solid #ccc'</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;padding: <span class="string">'5px'</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+                    &nbsp;&nbsp;},<br>
+                    &nbsp;&nbsp;<span class="comment">// More images...</span><br>
+                    ];<br><br>
+                    
+                    <span class="comment">// How to submit to JotForm</span><br>
+                    <span class="keyword">const</span> submitData = {<br>
+                    &nbsp;&nbsp;valid: <span class="keyword">true</span>,<br>
+                    &nbsp;&nbsp;value: <span class="keyword">JSON</span>.stringify(imageData)<br>
+                    };<br><br>
+                    
+                    <span class="comment">// Send to JotForm</span><br>
+                    JFCustomWidget.sendSubmit(submitData);
                 </div>
-                
-                <h3>Testing the Solution</h3>
-                <p>After implementing this fix:</p>
-                <ol>
-                    <li>Take a photo using the widget</li>
-                    <li>Approve the photo</li>
-                    <li>Click "Done"</li>
-                    <li>Submit your JotForm</li>
-                    <li>Check the PDF output - images should now display as thumbnails</li>
-                </ol>
             </div>
         </div>
+
+        <div class="card">
+            <h2>Step-by-Step Implementation</h2>
+            
+            <h3>1. Capture or Upload Images</h3>
+            <p>Use a camera widget or file uploader that provides image data as base64 strings or URLs.</p>
+            
+            <h3>2. Structure Your Data Correctly</h3>
+            <p>For each image, create an object with the required properties shown in the code example.</p>
+            
+            <h3>3. Add PDF Options</h3>
+            <p>Include the pdfOptions object with thumbnail display settings for each image.</p>
+            
+            <h3>4. Stringify Before Submission</h3>
+            <p>Convert your array of image objects to a JSON string before sending to JotForm.</p>
+            
+            <h3>5. Test Your Implementation</h3>
+            <p>Submit your form and verify that the PDF output shows clickable thumbnails.</p>
+        </div>
+
+        <div class="demo-section">
+            <div class="card upload-box">
+                <div class="upload-icon">📷</div>
+                <h3>Try It Yourself</h3>
+                <p>Implement this solution in your JotForm to enable PDF thumbnail display.</p>
+                <p>Use the code provided to structure your image data correctly.</p>
+                <button class="btn">Copy Code Snippet</button>
+            </div>
+            
+            <div class="card result-preview">
+                <h3>Expected PDF Output</h3>
+                <p>Your PDF will display images like this:</p>
+                <div class="thumbnail-grid">
+                    <div class="thumbnail">
+                        <img src="https://via.placeholder.com/100x80/3498db/ffffff?text=Thumbnail+1" alt="Thumbnail">
+                        <div class="thumbnail-title">Product A</div>
+                    </div>
+                    <div class="thumbnail">
+                        <img src="https://via.placeholder.com/100x80/e74c3c/ffffff?text=Thumbnail+2" alt="Thumbnail">
+                        <div class="thumbnail-title">Product B</div>
+                    </div>
+                    <div class="thumbnail">
+                        <img src="https://via.placeholder.com/100x80/2ecc71/ffffff?text=Thumbnail+3" alt="Thumbnail">
+                        <div class="thumbnail-title">Product C</div>
+                    </div>
+                </div>
+                <p style="margin-top: 20px;">Each thumbnail will be clickable in the PDF, linking to the full-size image.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Troubleshooting Tips</h2>
+            <ul>
+                <li>Verify that each image object has all required properties (url, fileName, pdfOptions)</li>
+                <li>Ensure you're using <code>JSON.stringify()</code> on your image array</li>
+                <li>Check that your base64 image data is properly formatted</li>
+                <li>Test with a simple example first before implementing complex logic</li>
+                <li>Consult JotForm's documentation for any updates to their PDF rendering</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>© 2023 JotForm PDF Thumbnail Solution | For use with JotForm platforms</p>
+        </footer>
     </div>
 
     <script>
-        console.log('Camera Widget Loading...');
+        // Simple code copy functionality
+        document.querySelector('.btn').addEventListener('click', function() {
+            const code = `const imageData = [
+  {
+    url: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...',
+    fileName: 'product-photo-12345.jpg',
+    pdfOptions: {
+      display: 'thumbnail',
+      width: 'auto',
+      height: 'auto',
+      alignment: 'center',
+      border: '1px solid #ccc',
+      padding: '5px'
+    }
+  }
+];
 
-        let currentStream = null;
-        let uploadedPhotos = [];
+const submitData = {
+  valid: true,
+  value: JSON.stringify(imageData)
+};
 
-        // Initialize when JotForm is ready
-        JFCustomWidget.subscribe("ready", function(){
-            console.log("Widget is ready.");
-            setupClickHandlers();
+JFCustomWidget.sendSubmit(submitData);`;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = this.textContent;
+                this.textContent = 'Code Copied!';
+                setTimeout(() => {
+                    this.textContent = originalText;
+                }, 2000);
+            });
         });
-
-        function setupClickHandlers() {
-            document.getElementById('start-camera-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                startCamera();
-            });
-            
-            document.getElementById('capture-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                capturePhoto();
-            });
-            
-            document.getElementById('cancel-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                stopCamera();
-                showState('initial');
-            });
-            
-            document.getElementById('approve-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                approvePhoto();
-            });
-            
-            document.getElementById('retake-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                showState('camera');
-            });
-            
-            document.getElementById('add-another-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                showState('initial');
-            });
-            
-            document.getElementById('done-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                finalizeSubmission();
-            });
-            
-            document.getElementById('retry-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                showState('initial');
-            });
-        }
-
-        function showState(stateName) {
-            const states = ['initial', 'camera', 'preview', 'thumbnail', 'error'];
-            states.forEach(state => {
-                const element = document.getElementById(state + '-state');
-                if (element) element.style.display = 'none';
-            });
-            
-            const targetElement = document.getElementById(stateName + '-state');
-            if (targetElement) targetElement.style.display = 'flex';
-            
-            // Show permission warning when accessing camera
-            if (stateName === 'initial') {
-                document.getElementById('permission-warning').style.display = 'block';
-            }
-        }
-
-        async function startCamera() {
-            try {
-                showState('camera');
-                
-                // Show permission warning
-                document.getElementById('permission-warning').style.display = 'block';
-                
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: { ideal: 'environment' },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                });
-                
-                // Hide warning after successful access
-                document.getElementById('permission-warning').style.display = 'none';
-                
-                currentStream = stream;
-                const video = document.getElementById('camera-video');
-                if (video) {
-                    video.srcObject = stream;
-                    // Handle autoplay restrictions properly
-                    const playPromise = video.play();
-                    if (playPromise !== undefined) {
-                        playPromise.catch(error => {
-                            console.log("Autoplay prevented:", error);
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Camera error:', error);
-                showState('error');
-            }
-        }
-
-        function stopCamera() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
-                const video = document.getElementById('camera-video');
-                if (video) video.srcObject = null;
-            }
-        }
-
-        function capturePhoto() {
-            const video = document.getElementById('camera-video');
-            const canvas = document.getElementById('photo-canvas');
-            
-            if (video && canvas && video.videoWidth > 0) {
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0);
-                stopCamera();
-                showState('preview');
-            }
-        }
-
-        function approvePhoto() {
-            const canvas = document.getElementById('photo-canvas');
-            if (canvas) {
-                // Get the base64 data URL
-                const imageData = canvas.toDataURL('image/jpeg', 0.8);
-                
-                // Add to uploaded photos array
-                const photoData = {
-                    url: imageData,
-                    timestamp: Date.now(),
-                    fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`,
-                    pdfOptions: {
-                        display: 'thumbnail',
-                        width: 'auto',
-                        height: 'auto',
-                        alignment: 'center',
-                        border: '1px solid #ccc',
-                        padding: '5px'
-                    }
-                };
-                
-                uploadedPhotos.push(photoData);
-                
-                // Send the data to JotForm in real-time with proper PDF configuration
-                JFCustomWidget.sendData({ 
-                    value: JSON.stringify(uploadedPhotos),
-                    pdfOptions: {
-                        display: 'thumbnail',
-                        width: 'auto',
-                        height: 'auto',
-                        alignment: 'center',
-                        border: '1px solid #ccc',
-                        padding: '5px'
-                    }
-                });
-                
-                // Update the UI
-                updateUploadedPhotosDisplay();
-                showState('thumbnail');
-            }
-        }
-
-        function updateUploadedPhotosDisplay() {
-            const photosList = document.getElementById('uploaded-photos-list');
-            if (!photosList) return;
-            
-            photosList.innerHTML = '';
-            
-            if (uploadedPhotos.length === 0) {
-                photosList.innerHTML = '<div>No photos uploaded yet</div>';
-                return;
-            }
-            
-            // Display ALL uploaded photos
-            uploadedPhotos.forEach((photo, index) => {
-                const photoElement = document.createElement('div');
-                photoElement.className = 'thumbnail-container';
-                photoElement.innerHTML = `
-                    <img src="${photo.url}" class="thumbnail-image" alt="Uploaded photo ${index + 1}">
-                    <button class="delete-btn" data-index="${index}">×</button>
-                `;
-                
-                // Delete button handler
-                const deleteBtn = photoElement.querySelector('.delete-btn');
-                deleteBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    removePhoto(index);
-                });
-                
-                // Click to view full image
-                photoElement.addEventListener('click', () => {
-                    window.open(photo.url, '_blank');
-                });
-                
-                photosList.appendChild(photoElement);
-            });
-        }
-
-        function removePhoto(index) {
-            if (confirm('Are you sure you want to remove this photo?')) {
-                // Remove from array
-                uploadedPhotos.splice(index, 1);
-                
-                // Update display
-                updateUploadedPhotosDisplay();
-                
-                // If no photos left, go back to initial state
-                if (uploadedPhotos.length === 0) {
-                    showState('initial');
-                }
-            }
-        }
-
-        function finalizeSubmission() {
-            // Prepare all image data for submission with proper PDF options
-            const submissionData = uploadedPhotos.map(photo => ({
-                url: photo.url,
-                fileName: photo.fileName,
-                pdfOptions: photo.pdfOptions
-            }));
-            
-            // Send as a properly formatted string
-            var result = {
-                valid: true, // Mark the widget as valid
-                value: JSON.stringify(submissionData) // Send as JSON string
-            };
-            
-            // Send the final result to the parent form
-            JFCustomWidget.sendSubmit(result);
-            
-            alert('You have finished uploading photos. You can now submit the form.');
-        }
-
-        // This is the critical part - handle form submission
-        JFCustomWidget.subscribe("submit", function(){
-            console.log("Form submitted, sending image data");
-            finalizeSubmission();
-        });
-
     </script>
 </body>
 </html>
