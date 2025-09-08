@@ -1,549 +1,286 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Widget for JotForm</title>
-    <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            color: #333;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: #4a6cf7;
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        
-        .header p {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-        
-        .content {
-            padding: 25px;
-        }
-        
-        .state {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .state.active {
-            display: block;
-        }
-        
-        .btn {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 10px 5px;
-            min-width: 140px;
-        }
-        
-        .btn-primary {
-            background: #4a6cf7;
-            color: white;
-            box-shadow: 0 4px 6px rgba(74, 108, 247, 0.3);
-        }
-        
-        .btn-primary:hover {
-            background: #3b5be3;
-            transform: translateY(-2px);
-        }
-        
-        .btn-success {
-            background: #28a745;
-            color: white;
-            box-shadow: 0 4px 6px rgba(40, 167, 69, 0.3);
-        }
-        
-        .btn-success:hover {
-            background: #218838;
-            transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-            box-shadow: 0 4px 6px rgba(108, 117, 125, 0.3);
-        }
-        
-        .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-        
-        .video-container {
-            width: 100%;
-            max-width: 500px;
-            height: 300px;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 20px auto;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-        }
-        
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .preview-container {
-            width: 100%;
-            max-width: 500px;
-            height: 300px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 20px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px dashed #dee2e6;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        }
-        
-        #photo {
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 8px;
-        }
-        
-        .thumbnails {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin: 25px 0;
-        }
-        
-        .thumbnail {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .thumbnail:hover {
-            transform: scale(1.05);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        }
-        
-        .thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .delete-btn {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 28px;
-            height: 28px;
-            border: none;
-            border-radius: 50%;
-            background: #dc3545;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-        
-        .status {
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 500;
-        }
-        
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .instructions {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #4a6cf7;
-        }
-        
-        .instructions h3 {
-            margin-bottom: 10px;
-            color: #4a6cf7;
-        }
-        
-        .instructions ol {
-            padding-left: 20px;
-            text-align: left;
-        }
-        
-        .instructions li {
-            margin-bottom: 8px;
-        }
-        
-        @media (max-width: 600px) {
-            .btn {
-                padding: 10px 15px;
-                font-size: 14px;
-                min-width: 120px;
-            }
-            
-            .video-container, .preview-container {
-                height: 250px;
-            }
-            
-            .thumbnail {
-                width: 100px;
-                height: 100px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Widget for JotForm</title>
+  <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
+  <!-- Axios for Cloudinary upload -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+  <style>
+    /* --- your CSS unchanged --- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      color: #333;
+    }
+    .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); overflow: hidden; }
+    .header { background: #4a6cf7; color: white; padding: 20px; text-align: center; }
+    .header h1 { font-size: 24px; margin-bottom: 10px; }
+    .header p { font-size: 16px; opacity: 0.9; }
+    .content { padding: 25px; }
+    .state { display: none; text-align: center; padding: 20px; }
+    .state.active { display: block; }
+    .btn { padding: 12px 25px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; margin: 10px 5px; min-width: 140px; }
+    .btn-primary { background: #4a6cf7; color: white; box-shadow: 0 4px 6px rgba(74,108,247,0.3); }
+    .btn-primary:hover { background: #3b5be3; transform: translateY(-2px); }
+    .btn-success { background: #28a745; color: white; box-shadow: 0 4px 6px rgba(40,167,69,0.3); }
+    .btn-success:hover { background: #218838; transform: translateY(-2px); }
+    .btn-secondary { background: #6c757d; color: white; box-shadow: 0 4px 6px rgba(108,117,125,0.3); }
+    .btn-secondary:hover { background: #5a6268; transform: translateY(-2px); }
+    .video-container { width: 100%; max-width: 500px; height: 300px; background: #000; border-radius: 10px; overflow: hidden; margin: 20px auto; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+    #video { width: 100%; height: 100%; object-fit: cover; }
+    .preview-container { width: 100%; max-width: 500px; height: 300px; background: #f8f9fa; border-radius: 10px; overflow: hidden; margin: 20px auto; display: flex; align-items: center; justify-content: center; border: 2px dashed #dee2e6; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+    #photo { max-width: 100%; max-height: 100%; border-radius: 8px; }
+    .thumbnails { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin: 25px 0; }
+    .thumbnail { position: relative; width: 120px; height: 120px; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+    .thumbnail:hover { transform: scale(1.05); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+    .delete-btn { position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border: none; border-radius: 50%; background: #dc3545; color: white; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .status { padding: 15px; margin: 15px 0; border-radius: 8px; text-align: center; font-weight: 500; }
+    .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    .instructions { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4a6cf7; }
+    .instructions h3 { margin-bottom: 10px; color: #4a6cf7; }
+    .instructions ol { padding-left: 20px; text-align: left; }
+    .instructions li { margin-bottom: 8px; }
+    @media (max-width: 600px) {
+      .btn { padding: 10px 15px; font-size: 14px; min-width: 120px; }
+      .video-container, .preview-container { height: 250px; }
+      .thumbnail { width: 100px; height: 100px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Camera Photo Upload</h1>
-            <p>Take photos with your camera and upload them directly to the form</p>
-        </div>
-        
-        <div class="content">
-            <div id="state-initial" class="state active">
-                <div class="instructions">
-                    <h3>How to use:</h3>
-                    <ol>
-                        <li>Click the "Start Camera" button to enable your camera</li>
-                        <li>Allow camera permissions when prompted by your browser</li>
-                        <li>Position yourself in the frame and click "Capture Photo"</li>
-                        <li>Review your photo and click "Upload Photo" to add it to the form</li>
-                    </ol>
-                </div>
-                
-                <button id="btn-start" class="btn btn-primary">Start Camera</button>
-                <div id="status-initial" class="status info">Ready to start camera</div>
-            </div>
-            
-            <div id="state-camera" class="state">
-                <div class="video-container">
-                    <video id="video" autoplay playsinline></video>
-                </div>
-                
-                <button id="btn-capture" class="btn btn-success">Capture Photo</button>
-                <button id="btn-cancel" class="btn btn-secondary">Cancel</button>
-                <div id="status-camera" class="status info">Camera is active. Position yourself and click Capture.</div>
-            </div>
-            
-            <div id="state-preview" class="state">
-                <div class="preview-container">
-                    <canvas id="photo"></canvas>
-                </div>
-                
-                <button id="btn-upload" class="btn btn-success">Upload Photo</button>
-                <button id="btn-retake" class="btn btn-secondary">Retake Photo</button>
-                <div id="status-preview" class="status info">Review your photo before uploading.</div>
-            </div>
-            
-            <div id="state-complete" class="state">
-                <div id="status-complete" class="status success">Photo uploaded successfully!</div>
-                
-                <h3>Uploaded Photos</h3>
-                <div id="thumbnails" class="thumbnails">
-                    <!-- Thumbnails will be added here -->
-                </div>
-                
-                <button id="btn-add-more" class="btn btn-primary">Add Another Photo</button>
-                <button id="btn-done" class="btn btn-success">Done</button>
-            </div>
-            
-            <div id="state-error" class="state">
-                <div id="status-error" class="status error">Unable to access camera. Please check your permissions.</div>
-                <button id="btn-retry" class="btn btn-primary">Retry</button>
-            </div>
-        </div>
+  <div class="container">
+    <div class="header">
+      <h1>Camera Photo Upload</h1>
+      <p>Take photos with your camera and upload them directly to the form</p>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Elements
-            const states = {
-                initial: document.getElementById('state-initial'),
-                camera: document.getElementById('state-camera'),
-                preview: document.getElementById('state-preview'),
-                complete: document.getElementById('state-complete'),
-                error: document.getElementById('state-error')
-            };
-            
-            const video = document.getElementById('video');
-            const photoCanvas = document.getElementById('photo');
-            const thumbnailsContainer = document.getElementById('thumbnails');
-            
-            // Buttons
-            const btnStart = document.getElementById('btn-start');
-            const btnCapture = document.getElementById('btn-capture');
-            const btnCancel = document.getElementById('btn-cancel');
-            const btnUpload = document.getElementById('btn-upload');
-            const btnRetake = document.getElementById('btn-retake');
-            const btnAddMore = document.getElementById('btn-add-more');
-            const btnDone = document.getElementById('btn-done');
-            const btnRetry = document.getElementById('btn-retry');
-            
-            let stream = null;
-            let uploadedPhotos = [];
-            
-            // Initialize JotForm widget
-            JFCustomWidget.subscribe('ready', function() {
-                console.log('JotForm widget ready');
-                updateStatus('initial', 'Ready to start camera');
-            });
-            
-            // Switch between states
-            function showState(stateName) {
-                // Hide all states
-                for (const key in states) {
-                    states[key].classList.remove('active');
-                }
-                // Show the requested state
-                states[stateName].classList.add('active');
-            }
-            
-            // Update status message
-            function updateStatus(state, message, type = 'info') {
-                const statusElement = document.getElementById(`status-${state}`);
-                if (statusElement) {
-                    statusElement.textContent = message;
-                    statusElement.className = `status ${type}`;
-                }
-            }
-            
-            // Start camera
-            async function startCamera() {
-                try {
-                    updateStatus('initial', 'Accessing camera...');
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: 'environment' }, 
-                        audio: false 
-                    });
-                    
-                    video.srcObject = stream;
-                    showState('camera');
-                    updateStatus('camera', 'Camera is active. Position yourself and click Capture.');
-                    
-                } catch (error) {
-                    console.error('Error accessing camera:', error);
-                    updateStatus('initial', `Camera error: ${error.message}`, 'error');
-                    showState('error');
-                }
-            }
-            
-            // Capture photo
-            function capturePhoto() {
-                const context = photoCanvas.getContext('2d');
-                
-                // Set canvas dimensions to match video
-                photoCanvas.width = video.videoWidth;
-                photoCanvas.height = video.videoHeight;
-                
-                // Draw current video frame to canvas
-                context.drawImage(video, 0, 0, photoCanvas.width, photoCanvas.height);
-                
-                // Stop camera and show preview
-                stopCamera();
-                showState('preview');
-                updateStatus('preview', 'Review your photo before uploading.');
-            }
-            
-            // Stop camera
-            function stopCamera() {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    stream = null;
-                }
-            }
-            
-            // Upload photo
-            function uploadPhoto() {
-                // Convert canvas to data URL
-                const imageData = photoCanvas.toDataURL('image/jpeg');
-                
-                // Add to uploaded photos
-                uploadedPhotos.push({
-                    data: imageData,
-                    name: `photo_${Date.now()}.jpg`,
-                    type: 'image/jpeg'
-                });
-                
-                // Update thumbnails
-                updateThumbnails();
-                
-                // Update JotForm field
-                updateJotFormField();
-                
-                // Show complete state
-                showState('complete');
-                updateStatus('complete', `Success! ${uploadedPhotos.length} photo(s) uploaded.`);
-            }
-            
-            // Update thumbnails display
-            function updateThumbnails() {
-                thumbnailsContainer.innerHTML = '';
-                
-                uploadedPhotos.forEach((photo, index) => {
-                    const thumbnailDiv = document.createElement('div');
-                    thumbnailDiv.className = 'thumbnail';
-                    
-                    const thumbnailImg = document.createElement('img');
-                    thumbnailImg.src = photo.data;
-                    thumbnailImg.alt = `Uploaded photo ${index + 1}`;
-                    
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'delete-btn';
-                    deleteBtn.innerHTML = '×';
-                    deleteBtn.onclick = () => deletePhoto(index);
-                    
-                    thumbnailDiv.appendChild(thumbnailImg);
-                    thumbnailDiv.appendChild(deleteBtn);
-                    thumbnailsContainer.appendChild(thumbnailDiv);
-                });
-            }
-            
-            // Delete a photo
-            function deletePhoto(index) {
-                uploadedPhotos.splice(index, 1);
-                updateThumbnails();
-                updateJotFormField();
-                
-                if (uploadedPhotos.length === 0) {
-                    updateStatus('complete', 'All photos removed.');
-                } else {
-                    updateStatus('complete', `${uploadedPhotos.length} photo(s) remaining.`);
-                }
-            }
-            
-            // Update JotForm field value
-            function updateJotFormField() {
-                // Format data for JotForm PDF
-                const formattedData = uploadedPhotos.map(photo => ({
-                    url: photo.data,
-                    fileName: photo.name,
-                    pdfOptions: {
-                        display: 'thumbnail',
-                        width: '150px',
-                        height: '150px',
-                        alignment: 'center'
-                    }
-                }));
-                
-                // Send to JotForm
-                JFCustomWidget.sendData({
-                    value: JSON.stringify(formattedData)
-                });
-            }
-            
-            // Handle form submission
-            JFCustomWidget.subscribe('submit', function() {
-                console.log('Form submitted with photos:', uploadedPhotos.length);
-                
-                // Final update before submission
-                updateJotFormField();
-                
-                JFCustomWidget.sendSubmit({
-                    valid: true,
-                    value: JSON.stringify(uploadedPhotos.map(photo => ({
-                        url: photo.data,
-                        fileName: photo.name,
-                        pdfOptions: {
-                            display: 'thumbnail',
-                            width: '150px',
-                            height: '150px',
-                            alignment: 'center'
-                        }
-                    })))
-                });
-            });
-            
-            // Event listeners
-            btnStart.addEventListener('click', startCamera);
-            btnCapture.addEventListener('click', capturePhoto);
-            btnCancel.addEventListener('click', () => {
-                stopCamera();
-                showState('initial');
-            });
-            btnUpload.addEventListener('click', uploadPhoto);
-            btnRetake.addEventListener('click', () => {
-                showState('camera');
-                startCamera();
-            });
-            btnAddMore.addEventListener('click', () => {
-                showState('camera');
-                startCamera();
-            });
-            btnDone.addEventListener('click', () => {
-                alert(`You have uploaded ${uploadedPhotos.length} photos. You can now submit the form.`);
-            });
-            btnRetry.addEventListener('click', () => {
-                showState('initial');
-                updateStatus('initial', 'Ready to start camera');
-            });
-            
-            // Initial setup
-            showState('initial');
-            updateStatus('initial', 'Ready to start camera');
+    <div class="content">
+      <div id="state-initial" class="state active">
+        <div class="instructions">
+          <h3>How to use:</h3>
+          <ol>
+            <li>Click the "Start Camera" button to enable your camera</li>
+            <li>Allow camera permissions when prompted by your browser</li>
+            <li>Position yourself in the frame and click "Capture Photo"</li>
+            <li>Review your photo and click "Upload Photo" to add it to the form</li>
+          </ol>
+        </div>
+        <button id="btn-start" class="btn btn-primary">Start Camera</button>
+        <div id="status-initial" class="status info">Ready to start camera</div>
+      </div>
+
+      <div id="state-camera" class="state">
+        <div class="video-container">
+          <video id="video" autoplay playsinline></video>
+        </div>
+        <button id="btn-capture" class="btn btn-success">Capture Photo</button>
+        <button id="btn-cancel" class="btn btn-secondary">Cancel</button>
+        <div id="status-camera" class="status info">Camera is active. Position yourself and click Capture.</div>
+      </div>
+
+      <div id="state-preview" class="state">
+        <div class="preview-container">
+          <canvas id="photo"></canvas>
+        </div>
+        <button id="btn-upload" class="btn btn-success">Upload Photo</button>
+        <button id="btn-retake" class="btn btn-secondary">Retake Photo</button>
+        <div id="status-preview" class="status info">Review your photo before uploading.</div>
+      </div>
+
+      <div id="state-complete" class="state">
+        <div id="status-complete" class="status success">Photo uploaded successfully!</div>
+        <h3>Uploaded Photos</h3>
+        <div id="thumbnails" class="thumbnails"></div>
+        <button id="btn-add-more" class="btn btn-primary">Add Another Photo</button>
+        <button id="btn-done" class="btn btn-success">Done</button>
+      </div>
+
+      <div id="state-error" class="state">
+        <div id="status-error" class="status error">Unable to access camera. Please check your permissions.</div>
+        <button id="btn-retry" class="btn btn-primary">Retry</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const states = {
+        initial: document.getElementById('state-initial'),
+        camera: document.getElementById('state-camera'),
+        preview: document.getElementById('state-preview'),
+        complete: document.getElementById('state-complete'),
+        error: document.getElementById('state-error')
+      };
+      const video = document.getElementById('video');
+      const photoCanvas = document.getElementById('photo');
+      const thumbnailsContainer = document.getElementById('thumbnails');
+
+      const btnStart = document.getElementById('btn-start');
+      const btnCapture = document.getElementById('btn-capture');
+      const btnCancel = document.getElementById('btn-cancel');
+      const btnUpload = document.getElementById('btn-upload');
+      const btnRetake = document.getElementById('btn-retake');
+      const btnAddMore = document.getElementById('btn-add-more');
+      const btnDone = document.getElementById('btn-done');
+      const btnRetry = document.getElementById('btn-retry');
+
+      let stream = null;
+      let uploadedPhotos = [];
+
+      JFCustomWidget.subscribe('ready', function () {
+        updateStatus('initial', 'Ready to start camera');
+      });
+
+      function showState(stateName) {
+        for (const key in states) states[key].classList.remove('active');
+        states[stateName].classList.add('active');
+      }
+
+      function updateStatus(state, message, type = 'info') {
+        const statusElement = document.getElementById(`status-${state}`);
+        if (statusElement) {
+          statusElement.textContent = message;
+          statusElement.className = `status ${type}`;
+        }
+      }
+
+      async function startCamera() {
+        try {
+          updateStatus('initial', 'Accessing camera...');
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }, audio: false
+          });
+          video.srcObject = stream;
+          showState('camera');
+          updateStatus('camera', 'Camera is active. Position yourself and click Capture.');
+        } catch (error) {
+          updateStatus('initial', `Camera error: ${error.message}`, 'error');
+          showState('error');
+        }
+      }
+
+      function capturePhoto() {
+        const context = photoCanvas.getContext('2d');
+        photoCanvas.width = video.videoWidth;
+        photoCanvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, photoCanvas.width, photoCanvas.height);
+        stopCamera();
+        showState('preview');
+        updateStatus('preview', 'Review your photo before uploading.');
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          stream = null;
+        }
+      }
+
+      async function uploadPhoto() {
+        const imageData = photoCanvas.toDataURL('image/jpeg');
+        // Convert base64 to blob for Cloudinary
+        const blob = await (await fetch(imageData)).blob();
+        const formData = new FormData();
+        formData.append('file', blob);
+        formData.append('upload_preset', 'jotform_widget_upload'); // your preset
+        try {
+          const res = await axios.post(
+            'https://api.cloudinary.com/v1_1/du0puu5mt/image/upload',
+            formData
+          );
+          uploadedPhotos.push({
+            data: res.data.secure_url,
+            name: res.data.public_id + '.jpg',
+            type: 'image/jpeg'
+          });
+          updateThumbnails();
+          updateJotFormField();
+          showState('complete');
+          updateStatus('complete', `Success! ${uploadedPhotos.length} photo(s) uploaded.`);
+        } catch (err) {
+          console.error(err);
+          updateStatus('preview', 'Upload failed, please try again.', 'error');
+        }
+      }
+
+      function updateThumbnails() {
+        thumbnailsContainer.innerHTML = '';
+        uploadedPhotos.forEach((photo, index) => {
+          const thumbnailDiv = document.createElement('div');
+          thumbnailDiv.className = 'thumbnail';
+          const thumbnailImg = document.createElement('img');
+          thumbnailImg.src = photo.data;
+          thumbnailImg.alt = `Uploaded photo ${index + 1}`;
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.innerHTML = '×';
+          deleteBtn.onclick = () => deletePhoto(index);
+          thumbnailDiv.appendChild(thumbnailImg);
+          thumbnailDiv.appendChild(deleteBtn);
+          thumbnailsContainer.appendChild(thumbnailDiv);
         });
-    </script>
+      }
+
+      function deletePhoto(index) {
+        uploadedPhotos.splice(index, 1);
+        updateThumbnails();
+        updateJotFormField();
+        if (uploadedPhotos.length === 0) updateStatus('complete', 'All photos removed.');
+        else updateStatus('complete', `${uploadedPhotos.length} photo(s) remaining.`);
+      }
+
+      function updateJotFormField() {
+        const formattedData = uploadedPhotos.map(photo => ({
+          url: photo.data,
+          fileName: photo.name,
+          pdfOptions: {
+            display: 'thumbnail',
+            width: '150px',
+            height: '150px',
+            alignment: 'center'
+          }
+        }));
+        JFCustomWidget.sendData({ value: JSON.stringify(formattedData) });
+      }
+
+      JFCustomWidget.subscribe('submit', function () {
+        updateJotFormField();
+        JFCustomWidget.sendSubmit({
+          valid: true,
+          value: JSON.stringify(uploadedPhotos.map(photo => ({
+            url: photo.data,
+            fileName: photo.name,
+            pdfOptions: {
+              display: 'thumbnail',
+              width: '150px',
+              height: '150px',
+              alignment: 'center'
+            }
+          })))
+        });
+      });
+
+      btnStart.addEventListener('click', startCamera);
+      btnCapture.addEventListener('click', capturePhoto);
+      btnCancel.addEventListener('click', () => { stopCamera(); showState('initial'); });
+      btnUpload.addEventListener('click', uploadPhoto);
+      btnRetake.addEventListener('click', () => { showState('camera'); startCamera(); });
+      btnAddMore.addEventListener('click', () => { showState('camera'); startCamera(); });
+      btnDone.addEventListener('click', () => {
+        alert(`You have uploaded ${uploadedPhotos.length} photos. You can now submit the form.`);
+      });
+      btnRetry.addEventListener('click', () => { showState('initial'); updateStatus('initial', 'Ready to start camera'); });
+
+      showState('initial');
+      updateStatus('initial', 'Ready to start camera');
+    });
+  </script>
 </body>
 </html>
