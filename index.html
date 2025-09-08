@@ -1,16 +1,365 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>JotForm Camera Widget</title>
-    <link rel="stylesheet" href="camera.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permission Policy Violations Dashboard</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --success: #2ecc71;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .subtitle {
+            color: var(--dark);
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--light);
+            padding-bottom: 15px;
+        }
+        
+        .icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-right: 15px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .icon-danger {
+            background-color: var(--danger);
+        }
+        
+        .icon-warning {
+            background-color: var(--warning);
+        }
+        
+        .icon-success {
+            background-color: var(--success);
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        
+        .violation {
+            background-color: #fff5f5;
+            border-left: 4px solid var(--danger);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        
+        .violation-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--danger);
+        }
+        
+        pre {
+            background-color: var(--light);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+        
+        code {
+            font-family: 'Fira Code', monospace;
+            color: var(--dark);
+        }
+        
+        .solution {
+            background-color: #f0fff4;
+            border-left: 4px solid var(--success);
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        
+        .solution-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--success);
+        }
+        
+        .console-simulator {
+            background-color: #1e1e1e;
+            color: #f1f1f1;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Fira Code', monospace;
+            height: 300px;
+            overflow-y: auto;
+        }
+        
+        .console-message {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .error {
+            color: #ff6b6b;
+        }
+        
+        .warning {
+            color: #ffd93d;
+        }
+        
+        .info {
+            color: #6bcbff;
+        }
+        
+        .violation-message {
+            color: #ff9a3c;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            margin: 0 10px;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: var(--dark);
+            font-size: 1rem;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: var(--dark);
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: var(--secondary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
 </head>
 <body>
-    <div id="camera-widget">
-        <!-- Camera interface will be built here by JavaScript -->
+    <div class="container">
+        <header>
+            <h1>Permission Policy Violations Dashboard</h1>
+            <p class="subtitle">Analyzing and resolving browser permission policy violations for fullscreen, autoplay, and encrypted-media features.</p>
+        </header>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Policy Violations</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">1,712</div>
+                <div class="stat-label">Total Messages</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">1,000</div>
+                <div class="stat-label">Errors</div>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon icon-danger">!</div>
+                    <h2 class="card-title">Fullscreen Violation</h2>
+                </div>
+                <div class="violation">
+                    <div class="violation-title">Violation Message</div>
+                    <p>[Violation] Potential permissions policy violation: fullscreen is not allowed in this document.</p>
+                </div>
+                <p>This violation occurs when your code attempts to use the Fullscreen API without having the proper permissions policy enabled.</p>
+                
+                <div class="solution">
+                    <div class="solution-title">Solution</div>
+                    <p>Add the following permissions policy header to your server response:</p>
+                    <pre><code>Permissions-Policy: fullscreen=(self "https://yourdomain.com")</code></pre>
+                    <p>Or in your HTML meta tag:</p>
+                    <pre><code>&lt;meta http-equiv="Permissions-Policy" content="fullscreen=(self)"&gt;</code></pre>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon icon-warning">!</div>
+                    <h2 class="card-title">Autoplay Violation</h2>
+                </div>
+                <div class="violation">
+                    <div class="violation-title">Violation Message</div>
+                    <p>[Violation] Potential permissions policy violation: autoplay is not allowed in this document.</p>
+                </div>
+                <p>This violation occurs when media tries to autoplay without the proper permissions policy or user interaction.</p>
+                
+                <div class="solution">
+                    <div class="solution-title">Solution</div>
+                    <p>Add the following permissions policy header to your server response:</p>
+                    <pre><code>Permissions-Policy: autoplay=(self "https://yourdomain.com")</code></pre>
+                    <p>Or ensure autoplay is only triggered after user interaction:</p>
+                    <pre><code>document.getElementById('playButton').addEventListener('click', () => {
+  document.getElementById('myVideo').play();
+});</code></pre>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon icon-danger">!</div>
+                    <h2 class="card-title">Encrypted-Media Violation</h2>
+                </div>
+                <div class="violation">
+                    <div class="violation-title">Violation Message</div>
+                    <p>[Violation] Potential permissions policy violation: encrypted-media is not allowed in this document.</p>
+                </div>
+                <p>This violation occurs when your page tries to use the Encrypted Media Extensions (EME) API without proper permissions.</p>
+                
+                <div class="solution">
+                    <div class="solution-title">Solution</div>
+                    <p>Add the following permissions policy header to your server response:</p>
+                    <pre><code>Permissions-Policy: encrypted-media=(self "https://yourdomain.com")</code></pre>
+                    <p>Or in your HTML meta tag:</p>
+                    <pre><code>&lt;meta http-equiv="Permissions-Policy" content="encrypted-media=(self)"&gt;</code></pre>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon icon-success">✓</div>
+                    <h2 class="card-title">Console Simulation</h2>
+                </div>
+                <div class="console-simulator">
+                    <div class="console-message info">[Info] 1,712 messages hidden by filters</div>
+                    <div class="console-message info">[Info] 711 user messages</div>
+                    <div class="console-message error">[Error] 1,000 errors detected</div>
+                    <div class="console-message warning">[Warning] 1 warning present</div>
+                    <div class="console-message info">[Info] 711 info messages</div>
+                    <div class="console-message">No verbose messages</div>
+                    <div class="console-message violation">[Violation] Potential permissions policy violation: fullscreen is not allowed in this document.</div>
+                    <div class="console-message violation">[Violation] Potential permissions policy violation: autoplay is not allowed in this document.</div>
+                    <div class="console-message violation">[Violation] Potential permissions policy violation: encrypted-media is not allowed in this document.</div>
+                </div>
+                <p class="solution-title">How to Fix All Issues</p>
+                <p>Add a comprehensive permissions policy header:</p>
+                <pre><code>Permissions-Policy: fullscreen=(self), autoplay=(self), encrypted-media=(self)</code></pre>
+                <a href="#" class="btn">View Documentation</a>
+            </div>
+        </div>
+        
+        <footer>
+            <p>This dashboard helps you understand and resolve permission policy violations in your web application.</p>
+            <p>Remember to test your application after implementing these changes.</p>
+        </footer>
     </div>
-    
-    <script src="camera.js"></script>
+
+    <script>
+        // Simple script to demonstrate autoplay after user interaction
+        document.addEventListener('DOMContentLoaded', function() {
+            const consoleSimulator = document.querySelector('.console-simulator');
+            consoleSimulator.scrollTop = consoleSimulator.scrollHeight;
+        });
+    </script>
 </body>
 </html>
