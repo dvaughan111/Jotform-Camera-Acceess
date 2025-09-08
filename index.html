@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Widget</title>
+    <title>Camera Widget - PDF Thumbnail Solution</title>
     <meta http-equiv="Permissions-Policy" content="autoplay=(self), camera=(self), fullscreen=(self), encrypted-media=(self)">
     <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
     <style>
@@ -15,18 +15,60 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 15px;
-            background: #f8f9fa;
+            padding: 20px;
+            background: #f0f2f5;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .description {
+            color: #7f8c8d;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .widget-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
         }
         
         .widget-container {
-            width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
+            flex: 1;
+            min-width: 350px;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+        }
+        
+        .explanation {
+            flex: 1;
+            min-width: 350px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
         
         .state-container {
@@ -185,6 +227,36 @@
             display: none;
         }
         
+        .explanation h3 {
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .explanation ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .explanation li {
+            margin-bottom: 8px;
+        }
+        
+        .code {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        @media (max-width: 800px) {
+            .widget-section {
+                flex-direction: column;
+            }
+        }
+        
         @media (max-width: 600px) {
             .state-container {
                 padding: 20px 15px;
@@ -207,51 +279,108 @@
     </style>
 </head>
 <body>
-    <div class="widget-container">
-        <div class="permission-warning" id="permission-warning">
-            Camera permissions are required to use this feature. Please allow camera access when prompted.
-        </div>
+    <div class="container">
+        <header>
+            <h1>JotForm PDF Thumbnail Solution</h1>
+            <p class="description">This widget captures photos and ensures they display as clickable thumbnails in your PDF documents with proper formatting and styling.</p>
+        </header>
         
-        <div id="initial-state" class="state-container">
-            <button id="start-camera-btn" class="btn btn-primary">Take Photo</button>
-        </div>
-        
-        <div id="camera-state" class="state-container" style="display: none;">
-            <div class="video-container">
-                <video id="camera-video" playsinline muted></video>
+        <div class="widget-section">
+            <div class="widget-container">
+                <div class="permission-warning" id="permission-warning">
+                    Camera permissions are required to use this feature. Please allow camera access when prompted.
+                </div>
+                
+                <div id="initial-state" class="state-container">
+                    <button id="start-camera-btn" class="btn btn-primary">Take Photo</button>
+                </div>
+                
+                <div id="camera-state" class="state-container" style="display: none;">
+                    <div class="video-container">
+                        <video id="camera-video" playsinline muted></video>
+                    </div>
+                    <div class="btn-container">
+                        <button id="capture-btn" class="btn btn-success">Capture Photo</button>
+                        <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+                
+                <div id="preview-state" class="state-container" style="display: none;">
+                    <div class="preview-container">
+                        <canvas id="photo-canvas"></canvas>
+                    </div>
+                    <div class="btn-container">
+                        <button id="approve-btn" class="btn btn-success">Approve & Upload</button>
+                        <button id="retake-btn" class="btn btn-secondary">Retake Photo</button>
+                    </div>
+                </div>
+                
+                <div id="thumbnail-state" class="state-container" style="display: none;">
+                    <p class="success-message">Photo uploaded successfully!</p>
+                    
+                    <div class="uploaded-photos-container">
+                        <div id="uploaded-photos-list" class="uploaded-photos-list"></div>
+                    </div>
+                    
+                    <div class="btn-container">
+                        <button id="add-another-btn" class="btn btn-success">Add Another Photo</button>
+                        <button id="done-btn" class="btn btn-primary">Done</button>
+                    </div>
+                </div>
+                
+                <div id="error-state" class="state-container" style="display: none;">
+                    <p>Unable to access camera. Please check your permissions and try again.</p>
+                    <button id="retry-btn" class="btn btn-primary">Retry</button>
+                </div>
             </div>
-            <div class="btn-container">
-                <button id="capture-btn" class="btn btn-success">Capture Photo</button>
-                <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
-            </div>
-        </div>
-        
-        <div id="preview-state" class="state-container" style="display: none;">
-            <div class="preview-container">
-                <canvas id="photo-canvas"></canvas>
-            </div>
-            <div class="btn-container">
-                <button id="approve-btn" class="btn btn-success">Approve & Upload</button>
-                <button id="retake-btn" class="btn btn-secondary">Retake Photo</button>
-            </div>
-        </div>
-        
-        <div id="thumbnail-state" class="state-container" style="display: none;">
-            <p class="success-message">Photo uploaded successfully!</p>
             
-            <div class="uploaded-photos-container">
-                <div id="uploaded-photos-list" class="uploaded-photos-list"></div>
+            <div class="explanation">
+                <h2>Why This Works for JotForm PDFs</h2>
+                <p>The key to displaying images as thumbnails in JotForm PDFs is using the correct data structure when submitting the form data.</p>
+                
+                <h3>The Problem</h3>
+                <p>When you submit <code>[object Object]</code> to JotForm, it can't interpret the image data correctly for PDF generation.</p>
+                
+                <h3>The Solution</h3>
+                <p>We need to provide JotForm with a properly formatted data structure that includes:</p>
+                <ul>
+                    <li>The image URL or base64 data</li>
+                    <li>Filename for the image</li>
+                    <li>PDF display options as a separate property</li>
+                </ul>
+                
+                <h3>PDF Display Options</h3>
+                <div class="code">
+{
+  display: 'thumbnail',
+  width: 'auto',
+  height: 'auto', 
+  alignment: 'center',
+  border: '1px solid #ccc',
+  padding: '5px'
+}
+                </div>
+                
+                <h3>Data Submission Format</h3>
+                <p>Each image should be submitted with this structure:</p>
+                <div class="code">
+{
+  url: 'data:image/jpeg;base64,...',
+  fileName: 'photo-123456789.jpg',
+  pdfOptions: { ... }
+}
+                </div>
+                
+                <h3>Testing the Solution</h3>
+                <p>After implementing this fix:</p>
+                <ol>
+                    <li>Take a photo using the widget</li>
+                    <li>Approve the photo</li>
+                    <li>Click "Done"</li>
+                    <li>Submit your JotForm</li>
+                    <li>Check the PDF output - images should now display as thumbnails</li>
+                </ol>
             </div>
-            
-            <div class="btn-container">
-                <button id="add-another-btn" class="btn btn-success">Add Another Photo</button>
-                <button id="done-btn" class="btn btn-primary">Done</button>
-            </div>
-        </div>
-        
-        <div id="error-state" class="state-container" style="display: none;">
-            <p>Unable to access camera. Please check your permissions and try again.</p>
-            <button id="retry-btn" class="btn btn-primary">Retry</button>
         </div>
     </div>
 
@@ -301,7 +430,7 @@
             
             document.getElementById('done-btn').addEventListener('click', function(e) {
                 e.preventDefault();
-                alert('You have finished uploading photos. You can now submit the form.');
+                finalizeSubmission();
             });
             
             document.getElementById('retry-btn').addEventListener('click', function(e) {
@@ -395,16 +524,7 @@
                 const photoData = {
                     url: imageData,
                     timestamp: Date.now(),
-                    fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`
-                };
-                
-                uploadedPhotos.push(photoData);
-                
-                // Send the data to JotForm in real-time with proper PDF configuration
-                // The key fix: Create a proper string representation with PDF options
-                const photoDataForJotForm = {
-                    url: imageData,
-                    fileName: photoData.fileName,
+                    fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`,
                     pdfOptions: {
                         display: 'thumbnail',
                         width: 'auto',
@@ -415,8 +535,11 @@
                     }
                 };
                 
+                uploadedPhotos.push(photoData);
+                
+                // Send the data to JotForm in real-time with proper PDF configuration
                 JFCustomWidget.sendData({ 
-                    value: JSON.stringify(photoDataForJotForm),
+                    value: JSON.stringify(uploadedPhotos),
                     pdfOptions: {
                         display: 'thumbnail',
                         width: 'auto',
@@ -485,25 +608,15 @@
             }
         }
 
-        // This is the critical part - handle form submission
-        JFCustomWidget.subscribe("submit", function(){
-            console.log("Form submitted, sending image data");
-            
+        function finalizeSubmission() {
             // Prepare all image data for submission with proper PDF options
             const submissionData = uploadedPhotos.map(photo => ({
                 url: photo.url,
                 fileName: photo.fileName,
-                pdfOptions: {
-                    display: 'thumbnail',
-                    width: 'auto',
-                    height: 'auto',
-                    alignment: 'center',
-                    border: '1px solid #ccc',
-                    padding: '5px'
-                }
+                pdfOptions: photo.pdfOptions
             }));
             
-            // The key fix: Send as a properly formatted string
+            // Send as a properly formatted string
             var result = {
                 valid: true, // Mark the widget as valid
                 value: JSON.stringify(submissionData) // Send as JSON string
@@ -511,6 +624,14 @@
             
             // Send the final result to the parent form
             JFCustomWidget.sendSubmit(result);
+            
+            alert('You have finished uploading photos. You can now submit the form.');
+        }
+
+        // This is the critical part - handle form submission
+        JFCustomWidget.subscribe("submit", function(){
+            console.log("Form submitted, sending image data");
+            finalizeSubmission();
         });
 
     </script>
