@@ -22,18 +22,18 @@ let uploadedPhotos = [];
             });
             
             // CRITICAL: Handle submit polling
-            JFCustomWidget.subscribe('submit', function() {
-                console.log('Submit event - photos:', uploadedPhotos.length);
-                
-                // Return a JSON string of the uploaded photo URLs
-                const urls = uploadedPhotos.map(photo => photo.url);
-                const value = urls.length > 0 ? JSON.stringify(urls) : '';
+           JFCustomWidget.subscribe('submit', function() {
+    console.log('Submit event - photos:', uploadedPhotos.length);
+    
+    // This is the correct way to handle a submit event
+    const urls = uploadedPhotos.map(photo => photo.url);
+    const value = urls.length > 0 ? JSON.stringify(urls) : '';
 
-                return {
-                    value: value,
-                    valid: true
-                };
-            });
+    return {
+        value: value,
+        valid: true
+    };
+});
             
             // CRITICAL: Handle the polling requests we see in Network tab
             JFCustomWidget.subscribe('populate', function() {
