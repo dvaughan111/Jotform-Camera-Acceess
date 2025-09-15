@@ -45,13 +45,13 @@ function initCameraWidget() {
             
             <!-- UPLOADING STATE -->
             <div id="uploading-state" style="display: none;">
-                <p class="uploading-text">Uploading photo...</p>
+                <p class="uploading-text">Processing photo...</p>
                 <div class="progress-bar"></div>
             </div>
             
             <!-- THUMBNAIL STATE - UPDATED FOR MULTIPLE PHOTOS -->
             <div id="thumbnail-state" style="display: none;">
-                <p class="success-message">Photo uploaded successfully!</p>
+                <p class="success-message">Photo added successfully!</p>
                 
                 <!-- Action Buttons -->
                 <div class="actions-container">
@@ -117,7 +117,7 @@ function setupClickHandlers() {
     // Done button
     document.getElementById('done-btn').onclick = function(e) {
         e.preventDefault();
-        alert('All photos have been uploaded! You can submit the form now.');
+        alert('All photos have been added! You can continue with your form.');
     };
 }
 
@@ -156,8 +156,8 @@ function showState(stateName) {
 function resizeWidget(height) {
     setTimeout(() => {
         try {
-            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.resize) {
-                window.JFCustomWidget.resize(height);
+            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.requestFrameResize) {
+                window.JFCustomWidget.requestFrameResize(height);
             } else if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ type: 'setHeight', height: height }, '*');
             }
@@ -244,38 +244,44 @@ function approvePhoto() {
                 
             }, 'image/jpeg', 0.85);
         }
-    }, 1500);
+    }, 1000);
 }
 
 function submitPhotoToJotForm(photoData) {
-    const reader = new FileReader();
-    reader.onload = () => {
-        try {
-            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
-                // Submit each photo individually
-                window.JFCustomWidget.submit({
-                    type: 'file',
-                    data: {
-                        file: reader.result,
-                        filename: photoData.fileName,
-                        question: `Camera Photo ${uploadedPhotos.length}`,
-                        pdfOptions: {
-                            display: 'thumbnail',
-                            width: 'auto',
-                            height: 'auto',
-                            alignment: 'center',
-                            border: '1px solid #ccc',
-                            padding: '5px'
-                        }
-                    }
-                });
-                console.log('✅ Photo submitted:', photoData.fileName);
+    try {
+        // Convert blob to base64
+        const reader = new FileReader();
+        reader.onload = function() {
+            const base64Data = reader.result;
+            
+            // Add to the collected photos array for JotForm
+            if (!window.jotformPhotos) {
+                window.jotformPhotos = [];
             }
-        } catch (e) {
-            console.error('❌ Submit error:', e);
-        }
-    };
-    reader.readAsDataURL(photoData.blob);
+            
+            window.jotformPhotos.push({
+                name: photoData.fileName,
+                size: photoData.blob.size,
+                type: photoData.blob.type,
+                file: base64Data
+            });
+            
+            // Send data to JotForm using proper Widget API
+            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.sendData) {
+                window.JFCustomWidget.sendData({
+                    value: window.jotformPhotos
+                });
+                console.log('✅ Photo data sent to JotForm:', photoData.fileName);
+            } else {
+                console.log('⚠️ JotForm Widget API not available yet');
+            }
+        };
+        
+        reader.readAsDataURL(photoData.blob);
+        
+    } catch (e) {
+        console.error('❌ Submit error:', e);
+    }
 }
 
 function updateUploadedPhotosDisplay() {
@@ -325,27 +331,20 @@ function removePhoto(index) {
         // Remove from array
         uploadedPhotos.splice(index, 1);
         
+        // Remove from JotForm data array too
+        if (window.jotformPhotos) {
+            window.jotformPhotos.splice(index, 1);
+            
+            // Update JotForm with new data
+            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.sendData) {
+                window.JFCustomWidget.sendData({
+                    value: window.jotformPhotos
+                });
+            }
+        }
+        
         // Update display
         updateUploadedPhotosDisplay();
-        
-        // Update JotForm data
-        if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.submit) {
-            // Resubmit all remaining photos
-            uploadedPhotos.forEach((photo, idx) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    window.JFCustomWidget.submit({
-                        type: 'file',
-                        data: {
-                            file: reader.result,
-                            filename: photo.fileName,
-                            question: `Camera Photo ${idx + 1}`
-                        }
-                    });
-                };
-                reader.readAsDataURL(photo.blob);
-            });
-        }
         
         // If no photos left, go back to initial state
         if (uploadedPhotos.length === 0) {
@@ -368,5 +367,33 @@ if (!tryInit()) {
     document.addEventListener('DOMContentLoaded', tryInit);
     setTimeout(tryInit, 100);
 }
+
+// Initialize JotForm Widget API
+if (typeof window.JFCustomWidget !== 'undefined') {
+    window.JFCustomWidget.requestFrameResize = function(height) {
+        resizeWidget(height);
+    };
+    
+    // Subscribe to form submission to ensure data is ready
+    window.JFCustomWidget.subscribe('submit', function() {
+        if (window.jotformPhotos && window.jotformPhotos.length > 0) {
+            console.log('📤 Form submitting with', window.jotformPhotos.length, 'photos');
+            return {
+                valid: true,
+                value: window.jotformPhotos
+            };
+        }
+        return { valid: true, value: [] };
+    });
+    
+    console.log('🎯 JotForm Widget API initialized');
+}
+
+// Listen for JotForm ready event
+window.addEventListener('message', function(event) {
+    if (event.data === 'JFCustomWidget:ready') {
+        console.log('🎯 JotForm Widget API ready');
+    }
+});
 
 console.log('📋 Multiple photo upload widget loaded!');
