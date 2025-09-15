@@ -233,23 +233,6 @@ function updateGallery() {
 }
 
 function sendDataToJotForm() {
-    try {
-        if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-            // Convert the array of URLs to a JSON string
-            const urls = uploadedPhotos.map(photo => photo.url);
-            const value = urls.length > 0 ? JSON.stringify(urls) : '';
-            
-            JFCustomWidget.sendData({
-                value: value,
-                valid: true
-            });
-            
-            console.log('Data sent:', value);
-        }
-    } catch (e) {
-        console.error('Send error:', e);
-    }
-}
 
 // Initialize
 function init() {
