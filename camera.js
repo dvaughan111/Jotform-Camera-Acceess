@@ -2,6 +2,79 @@ console.log('🚀 Camera Widget Loading...');
 
 let currentStream = null;
 let uploadedPhotos = [];
+let widgetReady = false;
+
+// JotForm Widget initialization - MUST BE FIRST
+(function() {
+    // Wait for JotForm Widget API
+    const initWidget = () => {
+        if (typeof JFCustomWidget !== 'undefined') {
+            console.log('🎯 JotForm Widget API found');
+            
+            // Initialize widget with proper structure
+            JFCustomWidget.subscribe('ready', function() {
+                console.log('🎯 Widget ready event received');
+                widgetReady = true;
+                
+                // Send initial empty value
+                JFCustomWidget.sendData({
+                    value: '',
+                    valid: true
+                });
+            });
+            
+            // Handle form submission
+            JFCustomWidget.subscribe('submit', function() {
+                console.log('📤 Form submit event - returning photos:', uploadedPhotos.length);
+                
+                if (uploadedPhotos.length === 0) {
+                    return {
+                        value: '',
+                        valid: true
+                    };
+                }
+                
+                // Convert photos to comma-separated base64 string
+                const photoDataList = uploadedPhotos.map(photo => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    
+                    return new Promise((resolve) => {
+                        img.onload = () => {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/jpeg', 0.8));
+                        };
+                        img.src = photo.url;
+                    });
+                });
+                
+                return Promise.all(photoDataList).then(dataUrls => {
+                    const combinedData = dataUrls.join('|||'); // Use separator
+                    console.log('📤 Submitting combined photo data, length:', combinedData.length);
+                    
+                    return {
+                        value: combinedData,
+                        valid: true
+                    };
+                });
+            });
+            
+        } else {
+            console.log('⏳ Waiting for JotForm Widget API...');
+            setTimeout(initWidget, 100);
+        }
+    };
+    
+    // Start initialization
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWidget);
+    } else {
+        initWidget();
+    }
+})();
 
 function initCameraWidget() {
     console.log('📍 initCameraWidget called');
@@ -12,7 +85,7 @@ function initCameraWidget() {
         return;
     }
     
-    // Create the interface with multiple photo support
+    // Create the interface
     container.innerHTML = `
         <div class="widget-container" style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px; min-height: 100px;">
             <!-- INITIAL STATE -->
@@ -24,7 +97,7 @@ function initCameraWidget() {
             <!-- CAMERA STATE -->
             <div id="camera-state" style="display: none;">
                 <div class="video-container">
-                    <video id="camera-video" playsinline muted></video>
+                    <video id="camera-video" playsinline muted autoplay></video>
                 </div>
                 <div class="button-row">
                     <button id="capture-btn" class="success-btn">📸 Capture</button>
@@ -49,19 +122,17 @@ function initCameraWidget() {
                 <div class="progress-bar"></div>
             </div>
             
-            <!-- THUMBNAIL STATE - UPDATED FOR MULTIPLE PHOTOS -->
+            <!-- THUMBNAIL STATE -->
             <div id="thumbnail-state" style="display: none;">
                 <p class="success-message">Photo added successfully!</p>
                 
-                <!-- Action Buttons -->
                 <div class="actions-container">
                     <button id="add-another-btn" class="success-btn">📷 Add Another Photo</button>
-                    <button id="done-btn" class="primary-btn">✅ Done Uploading</button>
+                    <button id="done-btn" class="primary-btn">✅ Done (${uploadedPhotos.length} photos)</button>
                 </div>
                 
-                <!-- Uploaded Photos Gallery - FIXED VISIBILITY -->
                 <div id="uploaded-photos-container" class="photo-gallery">
-                    <h4 class="gallery-title">Your Uploaded Photos:</h4>
+                    <h4 class="gallery-title">Uploaded Photos (${uploadedPhotos.length}):</h4>
                     <div id="uploaded-photos-list" class="uploaded-photos-list"></div>
                 </div>
             </div>
@@ -70,54 +141,48 @@ function initCameraWidget() {
     
     console.log('✅ Interface created');
     setupClickHandlers();
-    resizeWidget(100);
+    updateWidgetHeight(100);
     console.log('✅ Widget setup complete');
 }
 
 function setupClickHandlers() {
     console.log('📍 Setting up click handlers...');
     
-    // Start camera button
-    document.getElementById('start-camera-btn').onclick = function(e) {
+    document.getElementById('start-camera-btn').onclick = (e) => {
         e.preventDefault();
         startCamera();
     };
     
-    // Capture button
-    document.getElementById('capture-btn').onclick = function(e) {
+    document.getElementById('capture-btn').onclick = (e) => {
         e.preventDefault();
         capturePhoto();
     };
     
-    // Cancel button
-    document.getElementById('cancel-btn').onclick = function(e) {
+    document.getElementById('cancel-btn').onclick = (e) => {
         e.preventDefault();
         stopCamera();
         showState('initial');
     };
     
-    // Approve button
-    document.getElementById('approve-btn').onclick = function(e) {
+    document.getElementById('approve-btn').onclick = (e) => {
         e.preventDefault();
         approvePhoto();
     };
     
-    // Retake button
-    document.getElementById('retake-btn').onclick = function(e) {
+    document.getElementById('retake-btn').onclick = (e) => {
         e.preventDefault();
         showState('camera');
     };
     
-    // Add Another button
-    document.getElementById('add-another-btn').onclick = function(e) {
+    document.getElementById('add-another-btn').onclick = (e) => {
         e.preventDefault();
         showState('initial');
     };
     
-    // Done button
-    document.getElementById('done-btn').onclick = function(e) {
+    document.getElementById('done-btn').onclick = (e) => {
         e.preventDefault();
-        alert('All photos have been added! You can continue with your form.');
+        sendDataToJotForm();
+        alert(`${uploadedPhotos.length} photos ready for submission!`);
     };
 }
 
@@ -133,49 +198,44 @@ function showState(stateName) {
     const targetElement = document.getElementById(stateName + '-state');
     if (targetElement) targetElement.style.display = 'block';
     
-    // Update photos display when showing thumbnail state
     if (stateName === 'thumbnail') {
         updateUploadedPhotosDisplay();
+        // Update button text with photo count
+        const doneBtn = document.getElementById('done-btn');
+        if (doneBtn) {
+            doneBtn.innerHTML = `✅ Done (${uploadedPhotos.length} photos)`;
+        }
     }
     
-    // Adjust height based on number of photos
-    const photoCount = uploadedPhotos.length;
-    const baseHeight = 100;
-    const photoHeight = Math.min(photoCount * 30, 200); // Max additional height
     const heights = {
-        'initial': baseHeight,
-        'camera': 450,
-        'preview': 450,
-        'uploading': 150,
-        'thumbnail': baseHeight + photoHeight + 200 // Base + photos + buttons
+        'initial': 100,
+        'camera': 400,
+        'preview': 400,
+        'uploading': 120,
+        'thumbnail': Math.min(300 + (uploadedPhotos.length * 20), 500)
     };
     
-    resizeWidget(heights[stateName] || baseHeight);
+    updateWidgetHeight(heights[stateName] || 100);
 }
 
-function resizeWidget(height) {
-    setTimeout(() => {
-        try {
-            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.requestFrameResize) {
-                window.JFCustomWidget.requestFrameResize(height);
-            } else if (window.parent && window.parent !== window) {
-                window.parent.postMessage({ type: 'setHeight', height: height }, '*');
-            }
-        } catch (e) {
-            console.error('❌ Resize error:', e);
+function updateWidgetHeight(height) {
+    try {
+        if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.requestFrameResize) {
+            JFCustomWidget.requestFrameResize(height);
         }
-    }, 100);
+    } catch (e) {
+        console.log('Height update error:', e);
+    }
 }
 
 async function startCamera() {
     try {
-        resizeWidget(450);
         showState('camera');
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { 
-                facingMode: { ideal: 'environment' },
+                facingMode: 'environment',
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             }
@@ -185,12 +245,11 @@ async function startCamera() {
         const video = document.getElementById('camera-video');
         if (video) {
             video.srcObject = stream;
-            video.onloadedmetadata = () => video.play().catch(console.log);
         }
     } catch (error) {
+        console.error('Camera error:', error);
         alert('Camera error: ' + error.message);
         showState('initial');
-        resizeWidget(100);
     }
 }
 
@@ -223,74 +282,49 @@ function approvePhoto() {
     setTimeout(() => {
         const canvas = document.getElementById('photo-canvas');
         if (canvas) {
-            canvas.toBlob(blob => {
-                const url = URL.createObjectURL(blob);
-                
-                // Add to uploaded photos array
-                const photoData = {
-                    url: url,
-                    blob: blob,
-                    timestamp: Date.now(),
-                    fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`
-                };
-                
-                uploadedPhotos.push(photoData);
-                
-                // Submit to JotForm
-                submitPhotoToJotForm(photoData);
-                
-                updateUploadedPhotosDisplay();
-                showState('thumbnail');
-                
-            }, 'image/jpeg', 0.85);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const url = canvas.toDataURL('image/jpeg', 0.9); // Higher quality for display
+            
+            const photoData = {
+                url: url,
+                dataUrl: dataUrl,
+                timestamp: Date.now(),
+                fileName: `photo-${Date.now()}-${uploadedPhotos.length + 1}.jpg`
+            };
+            
+            uploadedPhotos.push(photoData);
+            console.log('✅ Photo added:', photoData.fileName);
+            
+            // Send updated data to JotForm
+            sendDataToJotForm();
+            
+            showState('thumbnail');
         }
-    }, 1000);
+    }, 800);
 }
 
-function submitPhotoToJotForm(photoData) {
-    // Store in a simple global variable that JotForm can access
-    if (!window.widgetPhotos) {
-        window.widgetPhotos = [];
+function sendDataToJotForm() {
+    if (!widgetReady) {
+        console.log('⚠️ Widget not ready yet');
+        return;
     }
     
-    // Convert to base64 string (most compatible)
-    const reader = new FileReader();
-    reader.onload = function() {
-        window.widgetPhotos.push({
-            filename: photoData.fileName,
-            data: reader.result,
-            size: photoData.blob.size,
-            type: 'image/jpeg'
-        });
-        
-        console.log('✅ Photo stored:', photoData.fileName);
-        console.log('Total photos:', window.widgetPhotos.length);
-        
-        // Try multiple ways to send data to JotForm
-        try {
-            // Method 1: Direct sendData
-            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.sendData) {
-                window.JFCustomWidget.sendData({
-                    value: window.widgetPhotos
-                });
-            }
+    try {
+        if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
+            // Create a simple string value with photo count
+            const photoCount = uploadedPhotos.length;
+            const value = photoCount > 0 ? `${photoCount} photos captured` : '';
             
-            // Method 2: Set global value
-            window.jotformWidgetValue = window.widgetPhotos;
+            JFCustomWidget.sendData({
+                value: value,
+                valid: true
+            });
             
-            // Method 3: Post message to parent
-            if (window.parent && window.parent !== window) {
-                window.parent.postMessage({
-                    type: 'widgetData',
-                    value: window.widgetPhotos
-                }, '*');
-            }
-            
-        } catch (e) {
-            console.error('❌ Submit error:', e);
+            console.log('📤 Data sent to JotForm:', value);
         }
-    };
-    reader.readAsDataURL(photoData.blob);
+    } catch (e) {
+        console.error('❌ Send data error:', e);
+    }
 }
 
 function updateUploadedPhotosDisplay() {
@@ -302,94 +336,63 @@ function updateUploadedPhotosDisplay() {
     photosList.innerHTML = '';
     
     if (uploadedPhotos.length === 0) {
-        photosList.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
-        photosContainer.style.display = 'none';
+        photosList.innerHTML = '<div class="empty-state">No photos yet</div>';
         return;
     }
     
-    photosContainer.style.display = 'block';
-    
-    // Display ALL uploaded photos
     uploadedPhotos.forEach((photo, index) => {
         const photoElement = document.createElement('div');
         photoElement.className = 'photo-thumbnail';
         photoElement.innerHTML = `
             <img src="${photo.url}" alt="Photo ${index + 1}">
-            <button class="photo-delete-btn" data-index="${index}">✕</button>
+            <button class="photo-delete-btn" onclick="removePhoto(${index})">✕</button>
         `;
         
-        // Click to view full image
-        photoElement.onclick = () => window.open(photo.url, '_blank');
-        
-        // Delete button handler
-        const deleteBtn = photoElement.querySelector('.photo-delete-btn');
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            removePhoto(index);
+        photoElement.onclick = (e) => {
+            if (!e.target.classList.contains('photo-delete-btn')) {
+                window.open(photo.url, '_blank');
+            }
         };
         
         photosList.appendChild(photoElement);
     });
+    
+    // Update title
+    const title = document.querySelector('.gallery-title');
+    if (title) {
+        title.textContent = `Uploaded Photos (${uploadedPhotos.length}):`;
+    }
 }
 
 function removePhoto(index) {
-    if (confirm('Are you sure you want to remove this photo?')) {
-        // Revoke the object URL to free memory
-        URL.revokeObjectURL(uploadedPhotos[index].url);
-        
-        // Remove from display array
+    if (confirm('Remove this photo?')) {
         uploadedPhotos.splice(index, 1);
-        
-        // Remove from JotForm data array too
-        if (window.widgetPhotos) {
-            window.widgetPhotos.splice(index, 1);
-            
-            // Update JotForm with new data
-            try {
-                if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.sendData) {
-                    window.JFCustomWidget.sendData({
-                        value: window.widgetPhotos
-                    });
-                }
-                
-                // Update global value
-                window.jotformWidgetValue = window.widgetPhotos;
-                
-            } catch (e) {
-                console.error('❌ Remove photo error:', e);
-            }
-        }
-        
-        // Update display
         updateUploadedPhotosDisplay();
+        sendDataToJotForm(); // Update JotForm data
         
-        // If no photos left, go back to initial state
         if (uploadedPhotos.length === 0) {
             showState('initial');
+        } else {
+            showState('thumbnail'); // Refresh the view
         }
     }
 }
 
-// Debug function - call from console: debugWidgetStatus()
-function debugWidgetStatus() {
-    console.log('🔍 Widget Debug Status:');
-    console.log('- Photos captured:', uploadedPhotos.length);
-    console.log('- Widget photos array:', window.widgetPhotos?.length || 0);
-    console.log('- JFCustomWidget available:', typeof window.JFCustomWidget !== 'undefined');
-    console.log('- sendData method:', typeof window.JFCustomWidget?.sendData);
-    console.log('- Global widget value:', window.jotformWidgetValue?.length || 0);
-    
-    if (window.widgetPhotos) {
-        window.widgetPhotos.forEach((photo, index) => {
-            console.log(`  Photo ${index + 1}:`, photo.filename, photo.size, 'bytes');
-        });
-    }
-}
+// Make functions globally available
+window.removePhoto = removePhoto;
 
-// Make debug function globally available
-window.debugWidgetStatus = debugWidgetStatus;
+// Debug function
+window.debugWidget = function() {
+    console.log('🔍 Widget Debug:');
+    console.log('- Widget ready:', widgetReady);
+    console.log('- Photos:', uploadedPhotos.length);
+    console.log('- JFCustomWidget:', typeof JFCustomWidget);
+    uploadedPhotos.forEach((photo, i) => {
+        console.log(`  ${i + 1}. ${photo.fileName}`);
+    });
+};
 
-// Initialize
+// Initialize widget interface
 function tryInit() {
     const container = document.getElementById('camera-widget');
     if (container) {
@@ -401,69 +404,7 @@ function tryInit() {
 
 if (!tryInit()) {
     document.addEventListener('DOMContentLoaded', tryInit);
-    setTimeout(tryInit, 100);
+    setTimeout(tryInit, 200);
 }
 
-// Simplified JotForm Widget API initialization
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize widget data
-    if (!window.widgetPhotos) {
-        window.widgetPhotos = [];
-    }
-    
-    // Initialize global value
-    window.jotformWidgetValue = [];
-    
-    console.log('🎯 Widget data initialized');
-});
-
-// Multiple fallback methods for JotForm integration
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        if (typeof window.JFCustomWidget !== 'undefined') {
-            console.log('🎯 JotForm Widget API available on load');
-            
-            try {
-                // Send initial empty data
-                window.JFCustomWidget.sendData({
-                    value: window.widgetPhotos || []
-                });
-            } catch (e) {
-                console.log('JotForm sendData not ready yet');
-            }
-        }
-    }, 1000);
-});
-
-// Listen for JotForm messages
-window.addEventListener('message', function(event) {
-    try {
-        if (event.origin.includes('jotform.com') || event.origin.includes('jotform.io')) {
-            if (event.data && event.data.type === 'getWidgetValue') {
-                console.log('📤 JotForm requesting widget value');
-                event.source.postMessage({
-                    type: 'widgetValue',
-                    value: window.widgetPhotos || []
-                }, event.origin);
-            }
-        }
-    } catch (e) {
-        console.log('Message handling error:', e);
-    }
-});
-
-// Additional fallback - expose getValue function
-window.getWidgetValue = function() {
-    console.log('📤 Direct getValue called:', window.widgetPhotos?.length || 0, 'photos');
-    return window.widgetPhotos || [];
-};
-
-// Alternative widget data getter
-window.getWidgetData = function() {
-    return {
-        value: window.widgetPhotos || [],
-        valid: true
-    };
-};
-
-console.log('📋 Multiple photo upload widget loaded!');
+console.log('📋 Camera widget script loaded!');
