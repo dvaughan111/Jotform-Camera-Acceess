@@ -25,24 +25,21 @@ let uploadedPhotos = [];
             JFCustomWidget.subscribe('submit', function() {
                 console.log('Submit event - photos:', uploadedPhotos.length);
                 
-                // Return simple text value (not files - that causes timeouts)
-                if (uploadedPhotos.length > 0) {
-                    return {
-                        value: `${uploadedPhotos.length} photos captured`,
-                        valid: true
-                    };
-                } else {
-                    return {
-                        value: '',
-                        valid: true
-                    };
-                }
+                // Return a JSON string of the uploaded photo URLs
+                const urls = uploadedPhotos.map(photo => photo.url);
+                const value = urls.length > 0 ? JSON.stringify(urls) : '';
+
+                return {
+                    value: value,
+                    valid: true
+                };
             });
             
             // CRITICAL: Handle the polling requests we see in Network tab
             JFCustomWidget.subscribe('populate', function() {
                 console.log('Populate event');
-                return uploadedPhotos.length > 0 ? `${uploadedPhotos.length} photos` : '';
+                const urls = uploadedPhotos.map(photo => photo.url);
+                return urls.length > 0 ? JSON.stringify(urls) : '';
             });
             
         } else {
@@ -181,18 +178,47 @@ function capturePhoto() {
     }
 }
 
-function approvePhoto() {
+async function approvePhoto() {
     const canvas = document.getElementById('canvas');
     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    
-    uploadedPhotos.push({
-        dataUrl: dataUrl,
-        timestamp: Date.now()
-    });
-    
-    console.log('Photo added, total:', uploadedPhotos.length);
-    sendDataToJotForm();
-    showState('gallery');
+
+    // Cloudinary credentials - REPLACE THESE WITH YOURS
+    const CLOUDINARY_CLOUD_NAME = 'du0puu5mt'; 
+    const UPLOAD_PRESET = 'jotform_widget_upload'; 
+
+    const formData = new FormData();
+    formData.append('file', dataUrl);
+    formData.append('upload_preset', UPLOAD_PRESET);
+
+    try {
+        // Upload the image directly to Cloudinary
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Cloudinary upload failed');
+        }
+
+        const result = await response.json();
+        const imageUrl = result.secure_url; 
+
+        // Store the public URL from Cloudinary
+        uploadedPhotos.push({
+            url: imageUrl,
+            timestamp: Date.now()
+        });
+
+        console.log('Photo uploaded to Cloudinary:', imageUrl);
+        sendDataToJotForm();
+        showState('gallery');
+
+    } catch (error) {
+        console.error('Upload Error:', error);
+        alert('Failed to upload photo. Please try again.');
+        showState('initial');
+    }
 }
 
 function updateGallery() {
@@ -202,14 +228,16 @@ function updateGallery() {
     btn.textContent = `Done (${uploadedPhotos.length})`;
     
     list.innerHTML = uploadedPhotos.map((photo, i) => 
-        `<img src="${photo.dataUrl}" style="width: 50px; height: 50px; margin: 2px; border-radius: 4px; object-fit: cover;">`
+        `<img src="${photo.url}" style="width: 50px; height: 50px; margin: 2px; border-radius: 4px; object-fit: cover;">`
     ).join('');
 }
 
 function sendDataToJotForm() {
     try {
         if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-            const value = uploadedPhotos.length > 0 ? `${uploadedPhotos.length} photos captured` : '';
+            // Convert the array of URLs to a JSON string
+            const urls = uploadedPhotos.map(photo => photo.url);
+            const value = urls.length > 0 ? JSON.stringify(urls) : '';
             
             JFCustomWidget.sendData({
                 value: value,
