@@ -248,40 +248,49 @@ function approvePhoto() {
 }
 
 function submitPhotoToJotForm(photoData) {
-    try {
-        // Convert blob to base64
-        const reader = new FileReader();
-        reader.onload = function() {
-            const base64Data = reader.result;
-            
-            // Add to the collected photos array for JotForm
-            if (!window.jotformPhotos) {
-                window.jotformPhotos = [];
-            }
-            
-            window.jotformPhotos.push({
-                name: photoData.fileName,
-                size: photoData.blob.size,
-                type: photoData.blob.type,
-                file: base64Data
-            });
-            
-            // Send data to JotForm using proper Widget API
+    // Store in a simple global variable that JotForm can access
+    if (!window.widgetPhotos) {
+        window.widgetPhotos = [];
+    }
+    
+    // Convert to base64 string (most compatible)
+    const reader = new FileReader();
+    reader.onload = function() {
+        window.widgetPhotos.push({
+            filename: photoData.fileName,
+            data: reader.result,
+            size: photoData.blob.size,
+            type: 'image/jpeg'
+        });
+        
+        console.log('✅ Photo stored:', photoData.fileName);
+        console.log('Total photos:', window.widgetPhotos.length);
+        
+        // Try multiple ways to send data to JotForm
+        try {
+            // Method 1: Direct sendData
             if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.sendData) {
                 window.JFCustomWidget.sendData({
-                    value: window.jotformPhotos
+                    value: window.widgetPhotos
                 });
-                console.log('✅ Photo data sent to JotForm:', photoData.fileName);
-            } else {
-                console.log('⚠️ JotForm Widget API not available yet');
             }
-        };
-        
-        reader.readAsDataURL(photoData.blob);
-        
-    } catch (e) {
-        console.error('❌ Submit error:', e);
-    }
+            
+            // Method 2: Set global value
+            window.jotformWidgetValue = window.widgetPhotos;
+            
+            // Method 3: Post message to parent
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'widgetData',
+                    value: window.widgetPhotos
+                }, '*');
+            }
+            
+        } catch (e) {
+            console.error('❌ Submit error:', e);
+        }
+    };
+    reader.readAsDataURL(photoData.blob);
 }
 
 function updateUploadedPhotosDisplay() {
@@ -328,18 +337,26 @@ function removePhoto(index) {
         // Revoke the object URL to free memory
         URL.revokeObjectURL(uploadedPhotos[index].url);
         
-        // Remove from array
+        // Remove from display array
         uploadedPhotos.splice(index, 1);
         
         // Remove from JotForm data array too
-        if (window.jotformPhotos) {
-            window.jotformPhotos.splice(index, 1);
+        if (window.widgetPhotos) {
+            window.widgetPhotos.splice(index, 1);
             
             // Update JotForm with new data
-            if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.sendData) {
-                window.JFCustomWidget.sendData({
-                    value: window.jotformPhotos
-                });
+            try {
+                if (typeof window.JFCustomWidget !== 'undefined' && window.JFCustomWidget.sendData) {
+                    window.JFCustomWidget.sendData({
+                        value: window.widgetPhotos
+                    });
+                }
+                
+                // Update global value
+                window.jotformWidgetValue = window.widgetPhotos;
+                
+            } catch (e) {
+                console.error('❌ Remove photo error:', e);
             }
         }
         
@@ -352,6 +369,25 @@ function removePhoto(index) {
         }
     }
 }
+
+// Debug function - call from console: debugWidgetStatus()
+function debugWidgetStatus() {
+    console.log('🔍 Widget Debug Status:');
+    console.log('- Photos captured:', uploadedPhotos.length);
+    console.log('- Widget photos array:', window.widgetPhotos?.length || 0);
+    console.log('- JFCustomWidget available:', typeof window.JFCustomWidget !== 'undefined');
+    console.log('- sendData method:', typeof window.JFCustomWidget?.sendData);
+    console.log('- Global widget value:', window.jotformWidgetValue?.length || 0);
+    
+    if (window.widgetPhotos) {
+        window.widgetPhotos.forEach((photo, index) => {
+            console.log(`  Photo ${index + 1}:`, photo.filename, photo.size, 'bytes');
+        });
+    }
+}
+
+// Make debug function globally available
+window.debugWidgetStatus = debugWidgetStatus;
 
 // Initialize
 function tryInit() {
@@ -368,32 +404,66 @@ if (!tryInit()) {
     setTimeout(tryInit, 100);
 }
 
-// Initialize JotForm Widget API
-if (typeof window.JFCustomWidget !== 'undefined') {
-    window.JFCustomWidget.requestFrameResize = function(height) {
-        resizeWidget(height);
-    };
+// Simplified JotForm Widget API initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize widget data
+    if (!window.widgetPhotos) {
+        window.widgetPhotos = [];
+    }
     
-    // Subscribe to form submission to ensure data is ready
-    window.JFCustomWidget.subscribe('submit', function() {
-        if (window.jotformPhotos && window.jotformPhotos.length > 0) {
-            console.log('📤 Form submitting with', window.jotformPhotos.length, 'photos');
-            return {
-                valid: true,
-                value: window.jotformPhotos
-            };
-        }
-        return { valid: true, value: [] };
-    });
+    // Initialize global value
+    window.jotformWidgetValue = [];
     
-    console.log('🎯 JotForm Widget API initialized');
-}
+    console.log('🎯 Widget data initialized');
+});
 
-// Listen for JotForm ready event
+// Multiple fallback methods for JotForm integration
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        if (typeof window.JFCustomWidget !== 'undefined') {
+            console.log('🎯 JotForm Widget API available on load');
+            
+            try {
+                // Send initial empty data
+                window.JFCustomWidget.sendData({
+                    value: window.widgetPhotos || []
+                });
+            } catch (e) {
+                console.log('JotForm sendData not ready yet');
+            }
+        }
+    }, 1000);
+});
+
+// Listen for JotForm messages
 window.addEventListener('message', function(event) {
-    if (event.data === 'JFCustomWidget:ready') {
-        console.log('🎯 JotForm Widget API ready');
+    try {
+        if (event.origin.includes('jotform.com') || event.origin.includes('jotform.io')) {
+            if (event.data && event.data.type === 'getWidgetValue') {
+                console.log('📤 JotForm requesting widget value');
+                event.source.postMessage({
+                    type: 'widgetValue',
+                    value: window.widgetPhotos || []
+                }, event.origin);
+            }
+        }
+    } catch (e) {
+        console.log('Message handling error:', e);
     }
 });
+
+// Additional fallback - expose getValue function
+window.getWidgetValue = function() {
+    console.log('📤 Direct getValue called:', window.widgetPhotos?.length || 0, 'photos');
+    return window.widgetPhotos || [];
+};
+
+// Alternative widget data getter
+window.getWidgetData = function() {
+    return {
+        value: window.widgetPhotos || [],
+        valid: true
+    };
+};
 
 console.log('📋 Multiple photo upload widget loaded!');
