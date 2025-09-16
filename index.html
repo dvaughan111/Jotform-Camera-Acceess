@@ -8,7 +8,50 @@
 </head>
 <body>
     <!-- JotForm Widget Container -->
-    <div id="camera-widget"></div>
+    <div id="camera-widget" class="widget-container">
+        <!-- Initial State -->
+        <div id="initial-state" class="state-container">
+            <p>Click the button below to start your camera</p>
+            <button id="start-btn" class="primary-btn">Start Camera</button>
+        </div>
+        
+        <!-- Camera State -->
+        <div id="camera-state" class="state-container" style="display: none;">
+            <div class="video-container">
+                <video id="video" playsinline autoplay></video>
+            </div>
+            <div class="button-row">
+                <button id="capture-btn" class="primary-btn">Capture Photo</button>
+                <button id="cancel-btn" class="secondary-btn">Cancel</button>
+            </div>
+        </div>
+        
+        <!-- Preview State -->
+        <div id="preview-state" class="state-container" style="display: none;">
+            <div class="preview-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="preview-actions">
+                <button id="approve-btn" class="success-btn">Approve & Upload</button>
+                <button id="retake-btn" class="secondary-btn">Retake</button>
+            </div>
+        </div>
+        
+        <!-- Gallery State -->
+        <div id="gallery-state" class="state-container" style="display: none;">
+            <div class="success-message">Photo uploaded successfully!</div>
+            <div class="photo-gallery">
+                <h3 class="gallery-title">Uploaded Photos</h3>
+                <div id="photos-list" class="uploaded-photos-list">
+                    <!-- Photos will appear here -->
+                </div>
+            </div>
+            <div class="actions-container">
+                <button id="add-more-btn" class="primary-btn">Add More Photos</button>
+                <button id="done-btn" class="success-btn">Done (<span id="photo-count">0</span>)</button>
+            </div>
+        </div>
+    </div>
     
     <!-- JotForm Widget API Script -->
     <script src="https://widgets.jotform.com/jsform/widget_sdk.js"></script>
