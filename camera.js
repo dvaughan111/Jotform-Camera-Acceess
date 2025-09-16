@@ -21,7 +21,7 @@ function initCameraWidget() {
 
 // Show a specific state
 function showState(stateId) {
-    const states = ['initial-state', 'camera-state', 'preview-state', 'gallery-state'];
+    const states = ['initial-state', 'camera-state', 'preview-state', 'uploading-state', 'gallery-state'];
     states.forEach(state => {
         document.getElementById(state).style.display = 'none';
     });
@@ -91,22 +91,69 @@ function retakePhoto() {
     console.log('Retaking photo');
 }
 
-// Approve and "upload" the photo
-function approvePhoto() {
+// Helper function to convert data URL to blob
+function dataURLToBlob(dataUrl) {
+    const parts = dataUrl.split(';base64,');
+    const contentType = parts[0].split(':')[1];
+    const raw = window.atob(parts[1]);
+    const uInt8Array = new Uint8Array(raw.length);
+    
+    for (let i = 0; i < raw.length; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+    }
+    
+    return new Blob([uInt8Array], { type: contentType });
+}
+
+// Approve and upload the photo to Cloudinary
+async function approvePhoto() {
     const canvas = document.getElementById('canvas');
-    const dataUrl = canvas.toDataURL('image/jpeg');
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+    // Show uploading state
+    showState('uploading-state');
     
-    // In a real implementation, you would upload to Cloudinary here
-    // For this demo, we'll simulate the upload and store the data URL
-    
-    uploadedPhotos.push({
-        url: dataUrl,
-        timestamp: Date.now()
-    });
-    
-    updateGallery();
-    showState('gallery-state');
-    console.log('Photo approved and "uploaded" (simulated)');
+    // Cloudinary credentials
+    const CLOUDINARY_CLOUD_NAME = 'du0puu5mt'; 
+    const UPLOAD_PRESET = 'jotform_widget_upload'; 
+
+    // Convert data URL to blob
+    const blob = dataURLToBlob(dataUrl);
+    const formData = new FormData();
+    formData.append('file', blob);
+    formData.append('upload_preset', UPLOAD_PRESET);
+    formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+
+    try {
+        // Upload the image to Cloudinary
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Cloudinary upload failed');
+        }
+
+        const result = await response.json();
+        const imageUrl = result.secure_url; 
+
+        // Store the public URL from Cloudinary
+        uploadedPhotos.push({
+            url: imageUrl,
+            timestamp: Date.now(),
+            public_id: result.public_id
+        });
+
+        console.log('Photo uploaded to Cloudinary:', imageUrl);
+        sendDataToJotForm();
+        showState('gallery-state');
+
+    } catch (error) {
+        console.error('Upload Error:', error);
+        alert('Failed to upload photo. Please try again.');
+        showState('preview-state');
+    }
 }
 
 // Update the gallery with uploaded photos
@@ -141,6 +188,22 @@ function finish() {
     
     // In a real JotForm implementation, you would send this data to the form
     console.log('Photos data:', uploadedPhotos);
+}
+
+// Send data to JotForm
+function sendDataToJotForm() {
+    if (typeof JFCustomWidget !== 'undefined') {
+        const urls = uploadedPhotos.map(photo => photo.url);
+        const value = urls.length > 0 ? JSON.stringify(urls) : '';
+        
+        JFCustomWidget.sendData({
+            value: value,
+            valid: true
+        });
+        
+        console.log('Data sent to JotForm:', value);
+    }
+    updateGallery();
 }
 
 // JotForm Widget Integration
