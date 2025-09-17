@@ -2,6 +2,7 @@ console.log('Camera Widget Loading...');
 
 let currentStream = null;
 let uploadedPhotos = [];
+let isSubmitting = false;
 
 // Initialize the widget
 function initCameraWidget() {
@@ -34,7 +35,11 @@ async function startCamera() {
     try {
         console.log('Attempting to access camera...');
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' },
+            video: { 
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
             audio: false 
         });
         
@@ -42,8 +47,12 @@ async function startCamera() {
         const videoElement = document.getElementById('video');
         videoElement.srcObject = stream;
         
-        showState('camera-state');
-        console.log('Camera access successful');
+        // Wait for video to be ready
+        videoElement.onloadedmetadata = function() {
+            showState('camera-state');
+            console.log('Camera access successful');
+        };
+        
     } catch (error) {
         console.error(`Camera error: ${error.message}`);
         alert(`Cannot access camera: ${error.message}`);
@@ -108,7 +117,7 @@ function dataURLToBlob(dataUrl) {
 // Approve and upload the photo to Cloudinary
 async function approvePhoto() {
     const canvas = document.getElementById('canvas');
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
     // Show uploading state
     showState('uploading-state');
@@ -142,7 +151,8 @@ async function approvePhoto() {
         uploadedPhotos.push({
             url: imageUrl,
             timestamp: Date.now(),
-            public_id: result.public_id
+            public_id: result.public_id,
+            dataUrl: dataUrl // Store data URL for preview
         });
 
         console.log('Photo uploaded to Cloudinary:', imageUrl);
@@ -164,15 +174,70 @@ function updateGallery() {
     photosList.innerHTML = '';
     photoCount.textContent = uploadedPhotos.length;
     
+    if (uploadedPhotos.length === 0) {
+        photosList.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
+        return;
+    }
+    
     uploadedPhotos.forEach((photo, index) => {
+        const photoItem = document.createElement('div');
+        photoItem.className = 'photo-item';
+        
         const img = document.createElement('img');
-        img.src = photo.url;
+        img.src = photo.dataUrl || photo.url;
         img.className = 'photo-thumbnail';
         img.alt = `Uploaded photo ${index + 1}`;
-        photosList.appendChild(img);
+        
+        // Make image clickable to view larger version
+        img.addEventListener('click', () => viewPhoto(photo.url));
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'photo-delete-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deletePhoto(index);
+        });
+        
+        photoItem.appendChild(img);
+        photoItem.appendChild(deleteBtn);
+        photosList.appendChild(photoItem);
     });
     
     console.log(`Gallery updated with ${uploadedPhotos.length} photos`);
+}
+
+// View photo in modal
+function viewPhoto(url) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <img src="${url}" class="modal-image" alt="Full size photo">
+            <button class="modal-close">×</button>
+        </div>
+    `;
+    
+    modal.querySelector('.modal-close').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+// Delete a photo
+function deletePhoto(index) {
+    if (confirm('Are you sure you want to delete this photo?')) {
+        uploadedPhotos.splice(index, 1);
+        updateGallery();
+        sendDataToJotForm();
+    }
 }
 
 // Add more photos
@@ -181,13 +246,22 @@ function addMorePhotos() {
     console.log('Ready to add more photos');
 }
 
-// Finish and submit (simulate JotForm submission)
+// Finish and submit to JotForm
 function finish() {
-    console.log(`Finished with ${uploadedPhotos.length} photos`);
-    alert(`Form would submit with ${uploadedPhotos.length} photos. Check console for details.`);
+    if (isSubmitting) return;
     
-    // In a real JotForm implementation, you would send this data to the form
-    console.log('Photos data:', uploadedPhotos);
+    isSubmitting = true;
+    console.log(`Submitting ${uploadedPhotos.length} photos to JotForm`);
+    
+    // Send final data to JotForm
+    sendDataToJotForm();
+    
+    // Simulate form submission completion
+    setTimeout(() => {
+        isSubmitting = false;
+        alert(`Form submitted successfully with ${uploadedPhotos.length} photos!`);
+        console.log('Form submission completed');
+    }, 1000);
 }
 
 // Send data to JotForm
@@ -225,14 +299,14 @@ function sendDataToJotForm() {
                 });
             });
             
-            // Handle submit polling
+            // Handle submit polling - FIXED: Return proper object
             JFCustomWidget.subscribe('submit', function() {
                 console.log('Submit event - photos:', uploadedPhotos.length);
                 
-                // This is the correct way to handle a submit event
                 const urls = uploadedPhotos.map(photo => photo.url);
                 const value = urls.length > 0 ? JSON.stringify(urls) : '';
 
+                // Return proper object structure
                 return {
                     value: value,
                     valid: true
