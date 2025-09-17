@@ -3,6 +3,7 @@ console.log('Camera Widget Loading...');
 let currentStream = null;
 let uploadedPhotos = [];
 
+// Cloudinary configuration
 const CLOUDINARY_CLOUD_NAME = 'du0puu5mt';
 const CLOUDINARY_UPLOAD_PRESET = 'jotform_widget_upload';
 
@@ -13,20 +14,18 @@ const CLOUDINARY_UPLOAD_PRESET = 'jotform_widget_upload';
             console.log('JotForm Widget API available');
             JFCustomWidget.subscribe('ready', initCameraWidget);
             
-            // This is the core fix: listen for the parent form's submit event.
+            // Subscribes to the parent form's submit event.
             JFCustomWidget.subscribe('submit', function() {
                 console.log('JotForm parent form is submitting. Finalizing widget data...');
-                // Get all uploaded photo URLs and join them into a single string.
                 const photoUrls = uploadedPhotos.map(photo => photo.imageUrl).join('|||');
 
-                // Return the final data to JotForm.
                 return {
                     value: photoUrls,
                     valid: true
                 };
             });
 
-            // This is also important for saving the state of the form.
+            // Handles populating the widget with previous data if the form is edited.
             JFCustomWidget.subscribe('populate', function() {
                 console.log('Populate event');
                 if (uploadedPhotos.length > 0) {
@@ -49,7 +48,7 @@ function initCameraWidget() {
     document.getElementById('approve-btn').addEventListener('click', approvePhoto);
     document.getElementById('retake-btn').addEventListener('click', retakePhoto);
     document.getElementById('add-more-btn').addEventListener('click', addMorePhotos);
-    // Removed the event listener for 'done-btn' because it's no longer needed for submission.
+    // The 'done-btn' is not needed for form submission, as the JotForm API handles it.
     console.log('Camera widget initialized successfully');
 }
 
@@ -152,8 +151,8 @@ async function approvePhoto() {
         const data = await response.json();
         const imageUrl = data.secure_url;
         
-        if (!imageUrl) {
-            throw new Error('Cloudinary upload failed.');
+        if (!response.ok || !imageUrl) {
+            throw new Error(`Cloudinary upload failed: ${data.error ? data.error.message : 'Unknown error'}`);
         }
         
         uploadedPhotos.push({
@@ -234,9 +233,15 @@ function addMorePhotos() {
     showState('initial');
 }
 
-// NOTE: This 'finish' function is no longer needed for the main submission process
-// because the 'submit' event listener handles it automatically.
 function finish() {
+    if (typeof JFCustomWidget !== 'undefined') {
+        try {
+            JFCustomWidget.sendSubmit();
+            console.log('JotForm submission completed');
+        } catch (e) {
+            console.error('Error completing JotForm submission:', e);
+        }
+    }
     alert(`Upload completed with ${uploadedPhotos.length} photos! The form can now be submitted.`);
 }
 
