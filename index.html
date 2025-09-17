@@ -12,7 +12,7 @@
         <!-- Initial State -->
         <div id="initial-state" class="state-container">
             <p>Click the button below to start your camera</p>
-            <button id="start-btn" class="primary-btn">Start Camera</button>
+            <button id="start-btn" class="primary-btn">Take Photo</button>
         </div>
         
         <!-- Camera State -->
@@ -21,7 +21,7 @@
                 <video id="video" playsinline muted></video>
             </div>
             <div class="button-row">
-                <button id="capture-btn" class="primary-btn">Capture Photo</button>
+                <button id="capture-btn" class="primary-btn">Capture</button>
                 <button id="cancel-btn" class="secondary-btn">Cancel</button>
             </div>
         </div>
@@ -32,30 +32,18 @@
                 <canvas id="canvas"></canvas>
             </div>
             <div class="preview-actions">
-                <button id="approve-btn" class="success-btn">Approve & Upload</button>
+                <button id="approve-btn" class="success-btn">Approve</button>
                 <button id="retake-btn" class="secondary-btn">Retake</button>
             </div>
-        </div>
-
-        <!-- Uploading State -->
-        <div id="uploading-state" class="state-container" style="display: none;">
-            <p class="uploading-text">Uploading your photo...</p>
-            <div class="progress-bar"></div>
-            <p class="uploading-text">Please wait</p>
         </div>
         
         <!-- Gallery State -->
         <div id="gallery-state" class="state-container" style="display: none;">
-            <div class="success-message">Photo uploaded successfully!</div>
-            <div class="photo-gallery">
-                <h3 class="gallery-title">Uploaded Photos</h3>
-                <div id="photos-list" class="uploaded-photos-list">
-                    <!-- Photos will appear here -->
-                </div>
-            </div>
-            <div class="actions-container">
-                <button id="add-more-btn" class="primary-btn">Add More Photos</button>
-                <button id="done-btn" class="success-btn">Finish Upload (<span id="photo-count">0</span>)</button>
+            <p style="color: #28a745; font-weight: bold;">Photo added!</p>
+            <div id="photos-list" style="margin: 10px 0;"></div>
+            <div>
+                <button id="add-more-btn" class="primary-btn">Add More</button>
+                <button id="done-btn" class="success-btn">Done (<span id="photo-count">0</span>)</button>
             </div>
         </div>
     </div>
