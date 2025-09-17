@@ -24,10 +24,17 @@ function initCameraWidget() {
 function showState(stateId) {
     const states = ['initial-state', 'camera-state', 'preview-state', 'uploading-state', 'gallery-state'];
     states.forEach(state => {
-        document.getElementById(state).style.display = 'none';
+        const element = document.getElementById(state);
+        if (element) {
+            element.style.display = 'none';
+        }
     });
-    document.getElementById(stateId).style.display = 'flex';
-    console.log(`Showing state: ${stateId}`);
+    
+    const currentState = document.getElementById(stateId);
+    if (currentState) {
+        currentState.style.display = 'flex';
+        console.log(`Showing state: ${stateId}`);
+    }
 }
 
 // Start the camera
@@ -45,17 +52,19 @@ async function startCamera() {
         
         currentStream = stream;
         const videoElement = document.getElementById('video');
-        videoElement.srcObject = stream;
-        
-        // Use a promise to handle video play with user interaction
-        const playPromise = videoElement.play();
-        
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.log('Auto-play was prevented:', error);
-                // Show play button instead
-                videoElement.controls = true;
-            });
+        if (videoElement) {
+            videoElement.srcObject = stream;
+            
+            // Use a promise to handle video play with user interaction
+            const playPromise = videoElement.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log('Auto-play was prevented:', error);
+                    // Show play button instead
+                    videoElement.controls = true;
+                });
+            }
         }
         
         showState('camera-state');
@@ -72,23 +81,26 @@ async function startCamera() {
 function capturePhoto() {
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const context = canvas.getContext('2d');
-
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Draw the current video frame to the canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // Stop the camera stream
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-        currentStream = null;
-    }
+    if (video && canvas) {
+        const context = canvas.getContext('2d');
 
-    showState('preview-state');
-    console.log('Photo captured');
+        // Set canvas dimensions to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Draw the current video frame to the canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Stop the camera stream
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+
+        showState('preview-state');
+        console.log('Photo captured');
+    }
 }
 
 // Cancel camera operation
@@ -125,6 +137,11 @@ function dataURLToBlob(dataUrl) {
 // Approve and upload the photo to Cloudinary
 async function approvePhoto() {
     const canvas = document.getElementById('canvas');
+    if (!canvas) {
+        alert('Canvas element not found');
+        return;
+    }
+    
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
     // Show uploading state
@@ -136,12 +153,15 @@ async function approvePhoto() {
 
     // Convert data URL to blob
     const blob = dataURLToBlob(dataUrl);
+    
+    // Create form data for Cloudinary upload
     const formData = new FormData();
     formData.append('file', blob);
     formData.append('upload_preset', UPLOAD_PRESET);
-    formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
 
     try {
+        console.log('Uploading to Cloudinary...');
+        
         // Upload the image to Cloudinary
         const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
             method: 'POST',
@@ -149,7 +169,9 @@ async function approvePhoto() {
         });
 
         if (!response.ok) {
-            throw new Error('Cloudinary upload failed');
+            const errorText = await response.text();
+            console.error('Cloudinary upload failed:', response.status, errorText);
+            throw new Error(`Upload failed: ${response.status} ${errorText}`);
         }
 
         const result = await response.json();
@@ -169,7 +191,7 @@ async function approvePhoto() {
 
     } catch (error) {
         console.error('Upload Error:', error);
-        alert('Failed to upload photo. Please try again.');
+        alert('Failed to upload photo. Please check your internet connection and try again.');
         showState('preview-state');
     }
 }
@@ -179,38 +201,44 @@ function updateGallery() {
     const photosList = document.getElementById('photos-list');
     const photoCount = document.getElementById('photo-count');
     
-    photosList.innerHTML = '';
-    photoCount.textContent = uploadedPhotos.length;
-    
-    if (uploadedPhotos.length === 0) {
-        photosList.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
-        return;
+    if (photosList) {
+        photosList.innerHTML = '';
+        
+        if (uploadedPhotos.length === 0) {
+            photosList.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
+            return;
+        }
+        
+        uploadedPhotos.forEach((photo, index) => {
+            const photoItem = document.createElement('div');
+            photoItem.className = 'photo-item';
+            
+            const img = document.createElement('img');
+            img.src = photo.dataUrl || photo.url;
+            img.className = 'photo-thumbnail';
+            img.alt = `Uploaded photo ${index + 1}`;
+            
+            // Make image clickable to view larger version
+            img.addEventListener('click', () => viewPhoto(photo.url));
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'photo-delete-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deletePhoto(index);
+            });
+            
+            photoItem.appendChild(img);
+            photoItem.appendChild(deleteBtn);
+            photosList.appendChild(photoItem);
+        });
     }
     
-    uploadedPhotos.forEach((photo, index) => {
-        const photoItem = document.createElement('div');
-        photoItem.className = 'photo-item';
-        
-        const img = document.createElement('img');
-        img.src = photo.dataUrl || photo.url;
-        img.className = 'photo-thumbnail';
-        img.alt = `Uploaded photo ${index + 1}`;
-        
-        // Make image clickable to view larger version
-        img.addEventListener('click', () => viewPhoto(photo.url));
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'photo-delete-btn';
-        deleteBtn.innerHTML = '×';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deletePhoto(index);
-        });
-        
-        photoItem.appendChild(img);
-        photoItem.appendChild(deleteBtn);
-        photosList.appendChild(photoItem);
-    });
+    // Safely update photo count if element exists
+    if (photoCount) {
+        photoCount.textContent = uploadedPhotos.length;
+    }
     
     console.log(`Gallery updated with ${uploadedPhotos.length} photos`);
 }
@@ -320,7 +348,7 @@ function sendDataToJotForm(isFinal = false) {
     updateGallery();
 }
 
-// JotForm Widget Integration - COMPLETELY REWRITTEN
+// JotForm Widget Integration
 (function() {
     // Custom function to handle JotForm submission
     window.submitJotForm = function() {
@@ -351,7 +379,7 @@ function sendDataToJotForm(isFinal = false) {
                 });
             });
             
-            // Handle submit event - THE CRITICAL FIX
+            // Handle submit event
             JFCustomWidget.subscribe('submit', function() {
                 console.log('JotForm submit event received');
                 const urls = uploadedPhotos.map(photo => photo.url);
