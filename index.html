@@ -1,330 +1,388 @@
-console.log('Camera Widget Loading...');
-
-let currentStream = null;
-let uploadedPhotos = [];
-let isSubmitting = false;
-
-// JotForm Widget Integration - CORRECTED based on documentation
-(function() {
-    function waitForJotForm() {
-        if (typeof JFCustomWidget !== 'undefined') {
-            console.log('JotForm Custom Widget API available');
-            
-            // Subscribe to ready event - CRITICAL: Must listen first
-            JFCustomWidget.subscribe('ready', function(data) {
-                console.log('Widget ready with data:', data);
-                initCameraWidget();
-                
-                // Send initial empty data
-                JFCustomWidget.sendData({
-                    value: '',
-                    valid: true
-                });
-            });
-            
-            // CORRECTED: Submit event handler - must use sendSubmit()
-            JFCustomWidget.subscribe('submit', function() {
-                console.log('Form submit event received');
-                
-                if (isSubmitting) {
-                    console.log('Already submitting, please wait...');
-                    return;
-                }
-                
-                isSubmitting = true;
-                
-                try {
-                    // Prepare submission data
-                    let submissionValue = '';
-                    
-                    if (uploadedPhotos.length > 0) {
-                        submissionValue = uploadedPhotos.length === 1 ? 
-                            "1 photo captured" : 
-                            `${uploadedPhotos.length} photos captured`;
-                    }
-                    
-                    console.log('Submitting value:', submissionValue);
-                    
-                    // CORRECTED: Use sendSubmit() instead of returning data
-                    JFCustomWidget.sendSubmit({
-                        valid: true,
-                        value: submissionValue
-                    });
-                    
-                } catch (error) {
-                    console.error('Error during submission:', error);
-                    JFCustomWidget.sendSubmit({
-                        valid: false,
-                        value: 'error',
-                        message: error.message
-                    });
-                } finally {
-                    isSubmitting = false;
-                }
-            });
-            
-            // Handle populate requests
-            JFCustomWidget.subscribe('populate', function(data) {
-                console.log('Populate event received:', data);
-                
-                if (data && data.value) {
-                    console.log('Existing form data:', data.value);
-                    // You could parse and restore existing data here
-                }
-                
-                return {
-                    value: uploadedPhotos.length > 0 ? 
-                        `${uploadedPhotos.length} photos captured` : 
-                        '',
-                    valid: true
-                };
-            });
-            
-        } else {
-            setTimeout(waitForJotForm, 50);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JotForm Camera Widget</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-    }
-    
-    // Start waiting for JotForm API
-    waitForJotForm();
-})();
 
-function initCameraWidget() {
-    console.log('Initializing camera widget...');
-    
-    // Set up event listeners
-    document.getElementById('start-btn').addEventListener('click', startCamera);
-    document.getElementById('capture-btn').addEventListener('click', capturePhoto);
-    document.getElementById('cancel-btn').addEventListener('click', cancelCamera);
-    document.getElementById('approve-btn').addEventListener('click', approvePhoto);
-    document.getElementById('retake-btn').addEventListener('click', retakePhoto);
-    document.getElementById('add-more-btn').addEventListener('click', addMorePhotos);
-    document.getElementById('done-btn').addEventListener('click', finish);
-    
-    console.log('Camera widget initialized successfully');
-}
-
-function showState(state) {
-    const states = ['initial', 'camera', 'preview', 'gallery'];
-    states.forEach(s => {
-        const el = document.getElementById(s + '-state');
-        if (el) el.style.display = 'none';
-    });
-    
-    const currentState = document.getElementById(state + '-state');
-    if (currentState) {
-        currentState.style.display = 'flex';
-    }
-    
-    if (state === 'gallery') {
-        updateGallery();
-    }
-    
-    updateHeight(state);
-}
-
-function updateHeight(state) {
-    const heights = { 
-        initial: 150, 
-        camera: 400, 
-        preview: 400, 
-        gallery: 300 + (uploadedPhotos.length * 180)
-    };
-    
-    try {
-        if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.requestFrameResize) {
-            JFCustomWidget.requestFrameResize({
-                height: heights[state] || 150
-            });
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            padding: 10px;
         }
-    } catch (e) {
-        console.log('Height error:', e);
-    }
-}
 
-function showStatus(message, type) {
-    const statusArea = document.getElementById('status-area');
-    statusArea.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            statusArea.innerHTML = '';
-        }, 3000);
-    }
-}
-
-async function startCamera() {
-    try {
-        showState('camera');
-        
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }
-        });
-        
-        currentStream = stream;
-        const video = document.getElementById('video');
-        video.srcObject = stream;
-        
-        video.play().catch(console.error);
-        
-    } catch (error) {
-        showStatus('Camera access denied or unavailable', 'error');
-        showState('initial');
-    }
-}
-
-function stopCamera() {
-    if (currentStream) {
-        currentStream.getTracks().forEach(t => t.stop());
-        currentStream = null;
-    }
-}
-
-function capturePhoto() {
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    
-    if (video && canvas && video.videoWidth > 0) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        stopCamera();
-        showState('preview');
-    }
-}
-
-function cancelCamera() {
-    stopCamera();
-    showState('initial');
-}
-
-function retakePhoto() {
-    showState('camera');
-    startCamera();
-}
-
-function approvePhoto() {
-    const canvas = document.getElementById('canvas');
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    
-    uploadedPhotos.push({
-        dataUrl: dataUrl,
-        timestamp: Date.now()
-    });
-    
-    console.log('Photo added, total:', uploadedPhotos.length);
-    sendDataToJotForm();
-    showState('gallery');
-}
-
-function updateGallery() {
-    const list = document.getElementById('photos-list');
-    
-    if (list) {
-        list.innerHTML = '';
-        
-        if (uploadedPhotos.length === 0) {
-            list.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
-            return;
+        .widget-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
-        
-        uploadedPhotos.forEach((photo, index) => {
-            const photoItem = document.createElement('div');
-            photoItem.className = 'photo-item';
-            
-            const img = document.createElement('img');
-            img.src = photo.dataUrl;
-            img.className = 'photo-thumbnail';
-            img.alt = `Uploaded photo ${index + 1}`;
-            
-            img.addEventListener('click', () => viewPhoto(photo.dataUrl));
-            
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'photo-delete-btn';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deletePhoto(index);
-            });
-            
-            photoItem.appendChild(img);
-            photoItem.appendChild(deleteBtn);
-            list.appendChild(photoItem);
-        });
-    }
-}
 
-function viewPhoto(url) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <img src="${url}" class="modal-image" alt="Full size photo">
-            <button class="modal-close">×</button>
+        .state-container {
+            padding: 25px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin: 8px;
+            white-space: nowrap;
+        }
+
+        .primary-btn {
+            background: #007bff;
+        }
+
+        .primary-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .secondary-btn {
+            background: #6c757d;
+        }
+
+        .secondary-btn:hover {
+            background: #545b62;
+            transform: translateY(-2px);
+        }
+
+        .success-btn {
+            background: #28a745;
+        }
+
+        .success-btn:hover {
+            background: #1e7e34;
+            transform: translateY(-2px);
+        }
+
+        .video-container {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .preview-container {
+            width: 100%;
+            height: 300px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #dee2e6;
+        }
+
+        #canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .button-row, .preview-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: nowrap;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .success-message {
+            font-size: 18px;
+            color: #28a745;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .photo-gallery {
+            margin-top: 25px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            width: 100%;
+        }
+
+        .gallery-title {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .uploaded-photos-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            justify-items: center;
+            align-items: center;
+            min-height: 180px;
+        }
+
+        .photo-item {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .photo-item:hover {
+            transform: scale(1.05);
+        }
+
+        .photo-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 3px solid #007bff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .photo-delete-btn {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+
+        .photo-delete-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .actions-container {
+            margin: 25px 0 15px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .empty-state {
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+            grid-column: 1 / span 2;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            position: relative;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 600px) {
+            .state-container {
+                padding: 15px;
+            }
+            
+            .video-container, .preview-container {
+                height: 250px;
+            }
+            
+            .uploaded-photos-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .empty-state {
+                grid-column: 1;
+            }
+            
+            .actions-container {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .video-container, .preview-container {
+                height: 200px;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+            
+            .button-row, .preview-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="camera-widget" class="widget-container">
+        <div id="initial-state" class="state-container">
+            <p>Click the button below to start your camera</p>
+            <button id="start-btn" class="btn primary-btn">Take Photo</button>
         </div>
-    `;
+        
+        <div id="camera-state" class="state-container" style="display: none;">
+            <div class="video-container">
+                <video id="video" playsinline autoplay muted></video>
+            </div>
+            <div class="button-row">
+                <button id="capture-btn" class="btn primary-btn">Capture</button>
+                <button id="cancel-btn" class="btn secondary-btn">Cancel</button>
+            </div>
+        </div>
+        
+        <div id="preview-state" class="state-container" style="display: none;">
+            <div class="preview-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="preview-actions">
+                <button id="approve-btn" class="btn success-btn">Approve</button>
+                <button id="retake-btn" class="btn secondary-btn">Retake</button>
+            </div>
+        </div>
+        
+        <div id="gallery-state" class="state-container" style="display: none;">
+            <p class="success-message">Photo added!</p>
+            <div class="photo-gallery">
+                <h3 class="gallery-title">Uploaded Photos</h3>
+                <div id="photos-list" class="uploaded-photos-list">
+                    <!-- Photos will be added here -->
+                </div>
+            </div>
+            <div class="actions-container">
+                <button id="add-more-btn" class="btn primary-btn">Add More</button>
+                <button id="done-btn" class="btn success-btn">Complete Upload</button>
+            </div>
+        </div>
+
+        <div id="status-area"></div>
+    </div>
+
+    <!-- Load JotForm Custom Widget API -->
+    <script>
+        // Load JotForm Custom Widget API asynchronously
+        (function() {
+            var po = document.createElement('script'); 
+            po.type = 'text/javascript'; 
+            po.async = true;
+            po.src = 'https://js.jotform.com/JotFormCustomWidget.min.js';
+            var s = document.getElementsByTagName('script')[0]; 
+            s.parentNode.insertBefore(po, s);
+        })();
+    </script>
     
-    modal.querySelector('.modal-close').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-    
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
-    });
-    
-    document.body.appendChild(modal);
-}
-
-function deletePhoto(index) {
-    if (confirm('Are you sure you want to delete this photo?')) {
-        uploadedPhotos.splice(index, 1);
-        updateGallery();
-        sendDataToJotForm();
-    }
-}
-
-function addMorePhotos() {
-    showState('initial');
-}
-
-function finish() {
-    showStatus('Upload completed successfully!', 'success');
-    sendDataToJotForm();
-}
-
-function sendDataToJotForm() {
-    try {
-        if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-            const value = uploadedPhotos.length > 0 ? 
-                (uploadedPhotos.length === 1 ? "1 photo captured" : `${uploadedPhotos.length} photos captured`) : 
-                '';
-            
-            JFCustomWidget.sendData({
-                value: value,
-                valid: true
-            });
-            
-            console.log('Data sent to JotForm:', value);
-        }
-    } catch (e) {
-        console.error('Error sending data to JotForm:', e);
-    }
-}
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM content loaded');
-    
-    // Fallback: if JotForm widget API is not available after 2 seconds, initialize directly
-    setTimeout(function() {
-        if (typeof JFCustomWidget === 'undefined') {
-            console.log('JotForm not detected, initializing directly');
-            initCameraWidget();
-        }
-    }, 2000);
-});
+    <script src="camera.js"></script>
+</body>
+</html>
