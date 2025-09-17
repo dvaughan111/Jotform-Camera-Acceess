@@ -376,111 +376,127 @@
 
         let currentStream = null;
         let uploadedPhotos = [];
-        let isSubmitting = false;
 
         // JotForm Widget Integration - Based on official documentation
         (function() {
-            function waitForJotForm() {
-                if (typeof JFCustomWidget !== 'undefined') {
-                    console.log('JotForm Widget API available');
+            const widget = {
+                isReady: false,
+                init: function() {
+                    console.log('Initializing JotForm widget integration');
+                    
+                    if (typeof JFCustomWidget === 'undefined') {
+                        console.error('JFCustomWidget is not defined');
+                        return false;
+                    }
                     
                     // Subscribe to ready event
-                    JFCustomWidget.subscribe('ready', function() {
-                        console.log('Widget ready - initializing');
-                        initCameraWidget();
-                        
-                        // Send initial empty data
+                    JFCustomWidget.subscribe('ready', this.onReady.bind(this));
+                    
+                    // Subscribe to submit event - CRITICAL for form submission
+                    JFCustomWidget.subscribe('submit', this.onSubmit.bind(this));
+                    
+                    // Subscribe to populate event
+                    JFCustomWidget.subscribe('populate', this.onPopulate.bind(this));
+                    
+                    return true;
+                },
+                
+                onReady: function() {
+                    console.log('JotForm Widget is ready');
+                    this.isReady = true;
+                    
+                    // Initialize our camera widget
+                    initCameraWidget();
+                    
+                    // Send initial data
+                    this.sendData('');
+                },
+                
+                onSubmit: function() {
+                    console.log('Form submission requested');
+                    console.log('Uploaded photos:', uploadedPhotos.length);
+                    
+                    // Prepare submission data
+                    let submissionData = '';
+                    
+                    if (uploadedPhotos.length > 0) {
+                        // Create simple text representation
+                        submissionData = uploadedPhotos.length === 1 ? 
+                            "1 photo captured" : 
+                            `${uploadedPhotos.length} photos captured`;
+                    }
+                    
+                    // Return data for form submission
+                    return {
+                        value: submissionData,
+                        valid: true
+                    };
+                },
+                
+                onPopulate: function(data) {
+                    console.log('Populate event received:', data);
+                    
+                    // Handle pre-filled data if needed
+                    if (data && data.value) {
+                        console.log('Existing data:', data.value);
+                    }
+                    
+                    return {
+                        value: uploadedPhotos.length > 0 ? 
+                            `${uploadedPhotos.length} photos captured` : 
+                            '',
+                        valid: true
+                    };
+                },
+                
+                sendData: function(value) {
+                    if (!this.isReady) {
+                        console.log('Widget not ready yet, cannot send data');
+                        return;
+                    }
+                    
+                    try {
                         JFCustomWidget.sendData({
-                            value: '',
+                            value: value,
                             valid: true
                         });
-                    });
+                        console.log('Data sent to JotForm:', value);
+                    } catch (error) {
+                        console.error('Error sending data:', error);
+                    }
+                },
+                
+                submitForm: function() {
+                    if (!this.isReady) {
+                        console.log('Widget not ready yet, cannot submit');
+                        return;
+                    }
                     
-                    // CRITICAL: Handle form submission properly
-                    JFCustomWidget.subscribe('submit', function() {
-                        console.log('JotForm submission requested - preparing data');
-                        
-                        // Check if we're already submitting
-                        if (isSubmitting) {
-                            console.log('Submission already in progress');
-                            return {
-                                value: 'submitting',
-                                valid: false
-                            };
-                        }
-                        
-                        // Mark as submitting
-                        isSubmitting = true;
-                        
-                        try {
-                            // Prepare the data for submission
-                            let submissionValue = '';
-                            
-                            if (uploadedPhotos.length > 0) {
-                                // Create a simple text summary for the form field
-                                submissionValue = uploadedPhotos.length === 1 ? 
-                                    "1 photo captured" : 
-                                    `${uploadedPhotos.length} photos captured`;
-                                
-                                console.log('Submitting value:', submissionValue);
-                            }
-                            
-                            // Return the data for form submission
-                            return {
-                                value: submissionValue,
-                                valid: true
-                            };
-                            
-                        } catch (error) {
-                            console.error('Error during submission:', error);
-                            return {
-                                value: 'error',
-                                valid: false,
-                                message: error.message
-                            };
-                        } finally {
-                            isSubmitting = false;
-                        }
-                    });
-                    
-                    // Handle populate requests (when form is loaded with existing data)
-                    JFCustomWidget.subscribe('populate', function(data) {
-                        console.log('Populate event received:', data);
-                        
-                        // If we have existing data, we might need to parse it
-                        if (data && data.value) {
-                            console.log('Existing data found:', data.value);
-                            // Here you would parse and restore any existing photos
-                        }
-                        
-                        // Return the current state
-                        return {
-                            value: uploadedPhotos.length > 0 ? 
-                                `${uploadedPhotos.length} photos captured` : 
-                                '',
-                            valid: true
-                        };
-                    });
-                    
-                    // Optional: Handle form reset
-                    JFCustomWidget.subscribe('reset', function() {
-                        console.log('Form reset requested');
-                        uploadedPhotos = [];
-                        updateGallery();
-                        showState('initial');
-                        
-                        return {
-                            value: '',
-                            valid: true
-                        };
-                    });
-                    
-                } else {
-                    setTimeout(waitForJotForm, 50);
+                    try {
+                        JFCustomWidget.sendSubmit();
+                        console.log('Form submission triggered');
+                    } catch (error) {
+                        console.error('Error submitting form:', error);
+                    }
                 }
+            };
+            
+            // Initialize the widget integration
+            if (!widget.init()) {
+                // Fallback: if JotForm widget API is not available, try again later
+                setTimeout(function() {
+                    if (typeof JFCustomWidget !== 'undefined') {
+                        widget.init();
+                    } else {
+                        console.log('JotForm widget API not detected, initializing standalone');
+                        initCameraWidget();
+                    }
+                }, 1000);
             }
             
-            waitForJotForm();
+            // Make widget available globally for other functions
+            window.jotformWidget = widget;
+            
         })();
 
         function initCameraWidget() {
@@ -514,7 +530,6 @@
                 updateGallery();
             }
             
-            // Update widget height for JotForm
             updateHeight(state);
         }
 
@@ -539,7 +554,6 @@
             const statusArea = document.getElementById('status-area');
             statusArea.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
             
-            // Auto-hide success messages after 3 seconds
             if (type === 'success') {
                 setTimeout(() => {
                     statusArea.innerHTML = '';
@@ -559,11 +573,10 @@
                 const video = document.getElementById('video');
                 video.srcObject = stream;
                 
-                // Play the video
                 video.play().catch(console.error);
                 
             } catch (error) {
-                showStatus('Camera access denied or unavailable: ' + error.message, 'error');
+                showStatus('Camera access denied or unavailable', 'error');
                 showState('initial');
             }
         }
@@ -580,11 +593,9 @@
             const canvas = document.getElementById('canvas');
             
             if (video && canvas && video.videoWidth > 0) {
-                // Match the canvas aspect ratio to the video
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 
-                // Draw the current video frame to the canvas
                 const context = canvas.getContext('2d');
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
@@ -637,7 +648,6 @@
                     img.className = 'photo-thumbnail';
                     img.alt = `Uploaded photo ${index + 1}`;
                     
-                    // Make image clickable to view larger version
                     img.addEventListener('click', () => viewPhoto(photo.dataUrl));
                     
                     const deleteBtn = document.createElement('button');
@@ -655,7 +665,6 @@
             }
         }
 
-        // View photo in modal
         function viewPhoto(url) {
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
@@ -679,7 +688,6 @@
             document.body.appendChild(modal);
         }
 
-        // Delete a photo
         function deletePhoto(index) {
             if (confirm('Are you sure you want to delete this photo?')) {
                 uploadedPhotos.splice(index, 1);
@@ -693,53 +701,35 @@
         }
 
         function finish() {
-            // For JotForm, we need to signal that we're done
-            if (typeof JFCustomWidget !== 'undefined') {
-                try {
-                    showStatus('Upload completed successfully!', 'success');
-                    
-                    // Send final data
-                    sendDataToJotForm();
-                    
-                    // Notify JotForm that we're ready for submission
-                    JFCustomWidget.sendSubmit();
-                    
-                } catch (e) {
-                    console.error('Error completing submission:', e);
-                    showStatus('Error: ' + e.message, 'error');
-                }
-            } else {
-                alert(`Upload completed with ${uploadedPhotos.length} photos!`);
+            showStatus('Upload completed successfully!', 'success');
+            sendDataToJotForm();
+            
+            if (window.jotformWidget && window.jotformWidget.isReady) {
+                window.jotformWidget.submitForm();
             }
         }
 
         function sendDataToJotForm() {
-            try {
-                if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-                    const value = uploadedPhotos.length > 0 ? 
-                        (uploadedPhotos.length === 1 ? "1 photo captured" : `${uploadedPhotos.length} photos captured`) : 
-                        '';
-                    
-                    JFCustomWidget.sendData({
-                        value: value,
-                        valid: true
-                    });
-                    
-                    console.log('Data sent to JotForm:', value);
-                }
-            } catch (e) {
-                console.error('Error sending data to JotForm:', e);
+            const value = uploadedPhotos.length > 0 ? 
+                (uploadedPhotos.length === 1 ? "1 photo captured" : `${uploadedPhotos.length} photos captured`) : 
+                '';
+            
+            if (window.jotformWidget && window.jotformWidget.isReady) {
+                window.jotformWidget.sendData(value);
             }
         }
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM content loaded');
-            // If JotForm widget API is not available, initialize directly
-            if (typeof JFCustomWidget === 'undefined') {
-                console.log('JotForm not detected, initializing directly');
-                initCameraWidget();
-            }
+            
+            // If JotForm widget API is not available after 2 seconds, initialize directly
+            setTimeout(function() {
+                if (typeof JFCustomWidget === 'undefined' && !window.jotformWidget) {
+                    console.log('JotForm not detected, initializing directly');
+                    initCameraWidget();
+                }
+            }, 2000);
         });
     </script>
 </body>
