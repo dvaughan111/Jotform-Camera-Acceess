@@ -39,9 +39,14 @@
         
         <!-- Gallery State -->
         <div id="gallery-state" class="state-container" style="display: none;">
-            <p style="color: #28a745; font-weight: bold;">Photo added!</p>
-            <div id="photos-list" style="margin: 10px 0;"></div>
-            <div>
+            <p class="success-message">Photo added!</p>
+            <div class="photo-gallery">
+                <h3 class="gallery-title">Uploaded Photos</h3>
+                <div id="photos-list" class="uploaded-photos-list">
+                    <!-- Photos will appear here -->
+                </div>
+            </div>
+            <div class="actions-container">
                 <button id="add-more-btn" class="primary-btn">Add More</button>
                 <button id="done-btn" class="success-btn">Done (<span id="photo-count">0</span>)</button>
             </div>
