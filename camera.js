@@ -2,9 +2,8 @@ console.log('Camera Widget Loading...');
 
 let currentStream = null;
 let uploadedPhotos = [];
-let isSubmitting = false;
 
-// JotForm Widget Integration
+// JotForm Widget Integration - FIXED SUBMISSION
 (function() {
     // Wait for JotForm Widget API
     function waitForJotForm() {
@@ -23,22 +22,38 @@ let isSubmitting = false;
                 });
             });
             
-            // Handle submit polling - FIXED: Return simple string, not object
+            // CRITICAL FIX: Proper submit handler for JotForm
             JFCustomWidget.subscribe('submit', function() {
                 console.log('Submit event - photos:', uploadedPhotos.length);
                 
                 // Return simple text value (not files - that causes timeouts)
                 if (uploadedPhotos.length > 0) {
-                    return `${uploadedPhotos.length} photos captured`;
+                    // Create a simple text representation of the photos
+                    const photoText = uploadedPhotos.length === 1 ? 
+                        "1 photo captured" : 
+                        `${uploadedPhotos.length} photos captured`;
+                    
+                    return {
+                        value: photoText,
+                        valid: true
+                    };
                 } else {
-                    return '';
+                    return {
+                        value: '',
+                        valid: true
+                    };
                 }
             });
             
-            // Handle the polling requests
+            // Handle populate requests
             JFCustomWidget.subscribe('populate', function() {
                 console.log('Populate event');
-                return uploadedPhotos.length > 0 ? `${uploadedPhotos.length} photos` : '';
+                if (uploadedPhotos.length > 0) {
+                    return uploadedPhotos.length === 1 ? 
+                        "1 photo captured" : 
+                        `${uploadedPhotos.length} photos captured`;
+                }
+                return '';
             });
             
         } else {
@@ -170,16 +185,6 @@ function approvePhoto() {
 
 function updateGallery() {
     const list = document.getElementById('photos-list');
-    const countElement = document.getElementById('photo-count');
-    const doneBtn = document.getElementById('done-btn');
-    
-    if (countElement) {
-        countElement.textContent = uploadedPhotos.length;
-    }
-    
-    if (doneBtn) {
-        doneBtn.textContent = `Done (${uploadedPhotos.length})`;
-    }
     
     if (list) {
         list.innerHTML = '';
@@ -254,33 +259,33 @@ function addMorePhotos() {
 }
 
 function finish() {
-    // Send final data to JotForm
-    sendDataToJotForm();
-    
     // For JotForm, we need to signal that we're done
     if (typeof JFCustomWidget !== 'undefined') {
         try {
-            // This tells JotForm that the widget has completed its task
-            JFCustomWidget.submitForm();
+            // This is the correct way to complete widget processing in JotForm
+            JFCustomWidget.sendSubmit();
+            console.log('JotForm submission completed');
         } catch (e) {
-            console.error('Error submitting to JotForm:', e);
+            console.error('Error completing JotForm submission:', e);
         }
     }
     
-    alert(`${uploadedPhotos.length} photos ready!`);
+    alert(`Upload completed with ${uploadedPhotos.length} photos! The form can now be submitted.`);
 }
 
 function sendDataToJotForm() {
     try {
         if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-            const value = uploadedPhotos.length > 0 ? `${uploadedPhotos.length} photos captured` : '';
+            const value = uploadedPhotos.length > 0 ? 
+                (uploadedPhotos.length === 1 ? "1 photo captured" : `${uploadedPhotos.length} photos captured`) : 
+                '';
             
             JFCustomWidget.sendData({
                 value: value,
                 valid: true
             });
             
-            console.log('Data sent:', value);
+            console.log('Data sent to JotForm:', value);
         }
     } catch (e) {
         console.error('Send error:', e);
