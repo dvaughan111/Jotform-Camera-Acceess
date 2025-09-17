@@ -266,13 +266,33 @@ function finish() {
     
     // For JotForm, we need to signal that we're done
     if (typeof JFCustomWidget !== 'undefined') {
-        // This tells JotForm that the widget has completed its task
-        JFCustomWidget.submitForm();
+        try {
+            // This is the correct way to submit in JotForm widgets
+            JFCustomWidget.sendSubmit({
+                value: JSON.stringify(uploadedPhotos.map(photo => photo.url)),
+                valid: true
+            });
+            
+            console.log('JotForm submission sent successfully');
+        } catch (e) {
+            console.error('Error submitting to JotForm:', e);
+            // Fallback: try to submit the form directly
+            try {
+                if (typeof JF !== 'undefined' && JF.submitForm) {
+                    JF.submitForm();
+                }
+            } catch (e2) {
+                console.error('Fallback submission also failed:', e2);
+            }
+        }
     }
     
-    alert(`Form submitted successfully with ${uploadedPhotos.length} photos!`);
-    console.log('Form submission completed');
-    isSubmitting = false;
+    // Show success message but don't block the UI
+    setTimeout(() => {
+        alert(`Form submitted successfully with ${uploadedPhotos.length} photos!`);
+        console.log('Form submission completed');
+        isSubmitting = false;
+    }, 500);
 }
 
 // Send data to JotForm
@@ -281,23 +301,39 @@ function sendDataToJotForm(isFinal = false) {
         const urls = uploadedPhotos.map(photo => photo.url);
         const value = urls.length > 0 ? JSON.stringify(urls) : '';
         
-        JFCustomWidget.sendData({
-            value: value,
-            valid: true
-        });
-        
-        console.log('Data sent to JotForm:', value);
-        
-        // If this is the final submission, mark as complete
-        if (isFinal) {
-            JFCustomWidget.sendSubmit();
+        try {
+            JFCustomWidget.sendData({
+                value: value,
+                valid: true
+            });
+            
+            console.log('Data sent to JotForm:', value);
+            
+            // If this is the final submission, mark as complete
+            if (isFinal && typeof JFCustomWidget.submitForm === 'function') {
+                JFCustomWidget.submitForm();
+            }
+        } catch (e) {
+            console.error('Error sending data to JotForm:', e);
         }
     }
     updateGallery();
 }
 
-// JotForm Widget Integration - FIXED VERSION
+// JotForm Widget Integration - COMPLETELY REWRITTEN
 (function() {
+    // Custom function to handle JotForm submission
+    window.submitJotForm = function() {
+        console.log('Manual form submission triggered');
+        const urls = uploadedPhotos.map(photo => photo.url);
+        const value = urls.length > 0 ? JSON.stringify(urls) : '';
+        
+        return {
+            value: value,
+            valid: true
+        };
+    };
+
     // Wait for JotForm Widget API
     function waitForJotForm() {
         if (typeof JFCustomWidget !== 'undefined') {
@@ -315,32 +351,30 @@ function sendDataToJotForm(isFinal = false) {
                 });
             });
             
-            // CRITICAL FIX: Handle submit event properly
+            // Handle submit event - THE CRITICAL FIX
             JFCustomWidget.subscribe('submit', function() {
-                console.log('Submit event - photos:', uploadedPhotos.length);
-                
+                console.log('JotForm submit event received');
                 const urls = uploadedPhotos.map(photo => photo.url);
                 const value = urls.length > 0 ? JSON.stringify(urls) : '';
-
-                // Return proper object structure
-                return {
-                    value: value,
-                    valid: true
-                };
+                
+                // Return the data directly (not as an object)
+                return value;
             });
             
-            // Handle the polling requests we see in Network tab
+            // Handle populate requests
             JFCustomWidget.subscribe('populate', function(data) {
-                console.log('Populate event', data);
+                console.log('Populate event received', data);
                 const urls = uploadedPhotos.map(photo => photo.url);
                 return urls.length > 0 ? JSON.stringify(urls) : '';
             });
             
         } else {
-            setTimeout(waitForJotForm, 50);
+            console.log('JFCustomWidget not found, retrying...');
+            setTimeout(waitForJotForm, 100);
         }
     }
     
+    // Start waiting for JotForm
     waitForJotForm();
 })();
 
@@ -350,6 +384,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // If JotForm widget API is not available, initialize directly
     if (typeof JFCustomWidget === 'undefined') {
         console.log('JotForm not detected, initializing directly');
-        initCameraWidget();
+        // Wait a bit more for JotForm to load
+        setTimeout(function() {
+            if (typeof JFCustomWidget === 'undefined') {
+                console.log('Running in standalone mode');
+                initCameraWidget();
+            }
+        }, 1000);
     }
 });
