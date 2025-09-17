@@ -5,83 +5,307 @@
     padding: 0;
 }
 
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f8f9fa;
+}
+
 .widget-container {
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
     margin: 0 auto;
     background: #fff;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .state-container {
-    padding: 20px;
+    padding: 25px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
 }
 
 .primary-btn {
-    padding: 10px 20px;
+    padding: 14px 28px;
     background: #007bff;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin: 8px;
+}
+
+.primary-btn:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
 }
 
 .secondary-btn {
-    padding: 10px 20px;
+    padding: 14px 28px;
     background: #6c757d;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin: 8px;
+}
+
+.secondary-btn:hover {
+    background: #545b62;
+    transform: translateY(-2px);
 }
 
 .success-btn {
-    padding: 10px 20px;
+    padding: 14px 28px;
     background: #28a745;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin: 8px;
+}
+
+.success-btn:hover {
+    background: #1e7e34;
+    transform: translateY(-2px);
 }
 
 .video-container {
     width: 100%;
-    height: 200px;
+    height: 300px;
     background: #000;
-    border-radius: 4px;
+    border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
+    position: relative;
 }
 
 #video {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 8px;
 }
 
 .preview-container {
     width: 100%;
-    height: 200px;
+    height: 300px;
     background: #f8f9fa;
-    border-radius: 4px;
+    border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 2px dashed #dee2e6;
 }
 
 #canvas {
     max-width: 100%;
     max-height: 100%;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .button-row, .preview-actions {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.success-message {
+    font-size: 18px;
+    color: #28a745;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.photo-gallery {
+    margin-top: 25px;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    width: 100%;
+}
+
+.gallery-title {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.uploaded-photos-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    min-height: 180px;
+}
+
+.photo-item {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    margin: 10px;
+}
+
+.photo-item:hover {
+    transform: scale(1.05);
+}
+
+.photo-thumbnail {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 3px solid #007bff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.photo-delete-btn {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+
+.photo-delete-btn:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+.actions-container {
+    margin: 25px 0 15px;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.empty-state {
+    color: #666;
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+}
+
+/* Modal for enlarged image */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    max-width: 90%;
+    max-height: 90%;
+    position: relative;
+}
+
+.modal-image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-close {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .state-container {
+        padding: 15px;
+    }
+    
+    .video-container, .preview-container {
+        height: 250px;
+    }
+    
+    .photo-thumbnail {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .uploaded-photos-list {
+        gap: 15px;
+    }
+}
+
+@media (max-width: 400px) {
+    .video-container, .preview-container {
+        height: 200px;
+    }
+    
+    .photo-thumbnail {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .primary-btn, .secondary-btn, .success-btn {
+        padding: 12px 24px;
+        font-size: 14px;
+    }
 }
