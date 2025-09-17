@@ -7,7 +7,7 @@
 
 .widget-container {
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
     margin: 0 auto;
     background: #fff;
     border-radius: 8px;
@@ -30,15 +30,15 @@
 
 /* Buttons */
 .primary-btn, .secondary-btn, .success-btn {
-    padding: 12px 24px;
+    padding: 14px 28px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    margin: 5px;
-    min-width: 120px;
+    margin: 8px;
+    min-width: 140px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
@@ -48,9 +48,9 @@
     color: white;
 }
 
-.primary-btn:hover {
+.primary-btn:hover, .primary-btn:focus {
     background: #0056b3;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 .secondary-btn {
@@ -58,9 +58,9 @@
     color: white;
 }
 
-.secondary-btn:hover {
+.secondary-btn:hover, .secondary-btn:focus {
     background: #545b62;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 .success-btn {
@@ -68,19 +68,19 @@
     color: white;
 }
 
-.success-btn:hover {
+.success-btn:hover, .success-btn:focus {
     background: #1e7e34;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 /* Video container and video element */
 .video-container {
     width: 100%;
-    height: 280px;
+    height: 300px;
     background: #000;
     border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     position: relative;
     display: flex;
     align-items: center;
@@ -98,20 +98,20 @@
 /* Button row for camera controls */
 .button-row {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 15px;
 }
 
 /* Preview container and canvas */
 .preview-container {
     width: 100%;
-    height: 280px;
+    height: 300px;
     background: #f8f9fa;
     border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -129,27 +129,27 @@
 /* Preview actions */
 .preview-actions {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 15px;
 }
 
 /* Uploading state */
 .uploading-text {
-    font-size: 16px;
+    font-size: 18px;
     color: #6c757d;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .progress-bar {
     width: 100%;
-    height: 6px;
+    height: 8px;
     background: #e9ecef;
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
     position: relative;
-    margin: 10px 0;
+    margin: 15px 0;
 }
 
 .progress-bar::after {
@@ -171,56 +171,10 @@
 
 /* Thumbnail state */
 .success-message {
-    font-size: 16px;
+    font-size: 18px;
     color: #28a745;
     font-weight: 600;
-    margin-bottom: 15px;
-}
-
-.thumbnail-container {
-    position: relative;
-    display: inline-block;
-    margin-bottom: 15px;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.thumbnail-image {
-    width: 150px;
-    height: 150px;
-    object-fit: cover;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: transform 0.2s ease;
-}
-
-.thumbnail-image:hover {
-    transform: scale(1.05);
-}
-
-.delete-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(220, 53, 69, 0.9);
-    color: white;
-    cursor: pointer;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    touch-action: manipulation;
-}
-
-.delete-btn:hover {
-    background: #dc3545;
-    transform: scale(1.1);
+    margin-bottom: 20px;
 }
 
 /* Photo gallery styles */
@@ -230,13 +184,15 @@
     background: #fff;
     border-radius: 8px;
     border: 1px solid #ddd;
+    width: 100%;
 }
 
 .gallery-title {
     margin-bottom: 20px;
     color: #333;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: bold;
+    text-align: center;
 }
 
 .uploaded-photos-list {
@@ -245,21 +201,21 @@
     gap: 15px;
     justify-content: center;
     align-items: center;
-    min-height: 100px;
+    min-height: 120px;
 }
 
-.photo-thumbnail {
+.photo-item {
     position: relative;
     cursor: pointer;
-    margin: 8px;
     transition: transform 0.2s ease;
+    margin: 5px;
 }
 
-.photo-thumbnail:hover {
+.photo-item:hover {
     transform: scale(1.05);
 }
 
-.photo-thumbnail img {
+.photo-thumbnail {
     width: 100px;
     height: 100px;
     object-fit: cover;
@@ -286,6 +242,7 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
+    z-index: 10;
 }
 
 .photo-delete-btn:hover {
@@ -301,15 +258,19 @@
 }
 
 .actions-container {
-    margin: 20px 0;
-    padding: 15px;
+    margin: 25px 0 15px;
+    padding: 20px;
     background: #fff;
     border-radius: 8px;
     border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
 }
 
 /* Mobile optimizations */
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .widget-container {
         max-width: 100%;
         border-radius: 0;
@@ -319,36 +280,48 @@
         padding: 15px;
     }
     
-    .video-container {
-        height: 240px;
+    .video-container, .preview-container {
+        height: 250px;
     }
     
-    .preview-container {
-        height: 240px;
+    .primary-btn, .secondary-btn, .success-btn {
+        padding: 12px 24px;
+        font-size: 16px;
+        min-width: 120px;
+    }
+    
+    .button-row, .preview-actions {
+        gap: 10px;
+    }
+    
+    .photo-thumbnail {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .actions-container {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .video-container, .preview-container {
+        height: 220px;
     }
     
     .primary-btn, .secondary-btn, .success-btn {
         padding: 10px 20px;
-        font-size: 14px;
-        min-width: 100px;
+        font-size: 15px;
+        min-width: 110px;
     }
     
-    .button-row {
-        gap: 8px;
+    .photo-thumbnail {
+        width: 70px;
+        height: 70px;
     }
     
-    .preview-actions {
-        gap: 8px;
-    }
-    
-    .thumbnail-image {
-        width: 120px;
-        height: 120px;
-    }
-    
-    .photo-thumbnail img {
-        width: 80px;
-        height: 80px;
+    .uploaded-photos-list {
+        gap: 10px;
     }
 }
 
@@ -358,85 +331,19 @@
         padding: 10px;
     }
     
-    .video-container {
-        height: 200px;
-    }
-    
-    .preview-container {
+    .video-container, .preview-container {
         height: 200px;
     }
     
     .primary-btn, .secondary-btn, .success-btn {
         padding: 8px 16px;
-        font-size: 13px;
-        min-width: 80px;
+        font-size: 14px;
+        min-width: 100px;
     }
     
-    .thumbnail-image {
-        width: 100px;
-        height: 100px;
-    }
-    
-    .photo-thumbnail img {
-        width: 70px;
-        height: 70px;
-    }
-}
-
-/* High DPI displays */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    .thumbnail-image {
-        image-rendering: -webkit-optimize-contrast;
-    }
-}
-
-/* Dark mode support (if needed) */
-@media (prefers-color-scheme: dark) {
-    .widget-container {
-        background: #2d3748;
-        color: #e2e8f0;
-    }
-    
-    .preview-container {
-        background: #4a5568;
-        border-color: #718096;
-    }
-    
-    .uploading-text {
-        color: #a0aec0;
-    }
-    
-    .success-message {
-        color: #68d391;
-    }
-    
-    .progress-bar {
-        background: #4a5568;
-    }
-    
-    .photo-gallery {
-        background: #2d3748;
-        border-color: #4a5568;
-    }
-    
-    .actions-container {
-        background: #2d3748;
-        border-color: #4a5568;
-    }
-}
-
-/* Landscape orientation adjustments for mobile */
-@media (orientation: landscape) and (max-height: 500px) {
-    .video-container {
-        height: 200px;
-    }
-    
-    .preview-container {
-        height: 200px;
-    }
-    
-    .state-container {
-        padding: 10px;
+    .photo-thumbnail {
+        width: 60px;
+        height: 60px;
     }
 }
 
@@ -444,8 +351,6 @@
 .primary-btn:focus,
 .secondary-btn:focus,
 .success-btn:focus,
-.delete-btn:focus,
-.thumbnail-image:focus,
 .photo-delete-btn:focus {
     outline: 2px solid #007bff;
     outline-offset: 2px;
@@ -464,4 +369,48 @@
 
 .state-container[style*="display: none"] {
     opacity: 0;
+}
+
+/* Fullscreen image modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    max-width: 90%;
+    max-height: 90%;
+}
+
+.modal-image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
