@@ -147,16 +147,172 @@ async function approvePhoto() {
     // Show uploading state
     showState('uploading-state');
     
-    // Cloudinary credentials
-    const CLOUDINARY_CLOUD_NAME = 'du0puu5mt'; 
-    const UPLOAD_PRESET = 'jotform_widget_upload'; 
+    try {
+        // Cloudinary credentials
+        const CLOUDINARY_CLOUD_NAME = 'du0puu5mt'; 
+        const UPLOAD_PRESET = 'jotform_widget_upload'; 
 
-    // Convert data URL to blob
-    const blob = dataURLToBlob(dataUrl);
+        // Convert data URL to blob
+        const blob = dataURLToBlob(dataUrl);
+        
+        // Create form data for Cloudinary upload
+        const formData = new FormData();
+        formData.append('file', blob);
+        formData.append('upload_preset', UPLOAD_PRESET);
+
+        // Upload to Cloudinary
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('Upload successful:', result);
+
+        // Store the uploaded photo data
+        const photoData = {
+            id: result.public_id,
+            url: result.secure_url,
+            thumbnail: result.secure_url.replace('/upload/', '/upload/w_150,h_150,c_fill/'),
+            timestamp: new Date().toISOString()
+        };
+
+        uploadedPhotos.push(photoData);
+        updatePhotoGallery();
+        showState('gallery-state');
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert(`Upload failed: ${error.message}`);
+        showState('preview-state'); // Go back to preview state on error
+    }
+}
+
+// Update the photo gallery display
+function updatePhotoGallery() {
+    const photosList = document.getElementById('photos-list');
+    const photoCount = document.getElementById('photo-count');
     
-    // Create form data for Cloudinary upload
-    const formData = new FormData();
-    formData.append('file', blob);
-    formData.append('upload_preset', UPLOAD_PRESET);
+    if (!photosList || !photoCount) return;
+    
+    // Update photo count
+    photoCount.textContent = uploadedPhotos.length;
+    
+    // Clear existing photos
+    photosList.innerHTML = '';
+    
+    if (uploadedPhotos.length === 0) {
+        photosList.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
+        return;
+    }
+    
+    // Add each photo
+    uploadedPhotos.forEach((photo, index) => {
+        const photoItem = document.createElement('div');
+        photoItem.className = 'photo-item';
+        photoItem.innerHTML = `
+            <img src="${photo.thumbnail}" alt="Photo ${index + 1}" class="photo-thumbnail">
+            <button class="photo-delete-btn" onclick="deletePhoto(${index})" title="Delete photo">×</button>
+        `;
+        
+        // Add click handler for full-size view
+        photoItem.querySelector('.photo-thumbnail').addEventListener('click', () => {
+            showFullSizePhoto(photo.url);
+        });
+        
+        photosList.appendChild(photoItem);
+    });
+}
 
-   
+// Delete a photo from the gallery
+function deletePhoto(index) {
+    if (confirm('Are you sure you want to delete this photo?')) {
+        uploadedPhotos.splice(index, 1);
+        updatePhotoGallery();
+        console.log(`Photo ${index} deleted`);
+    }
+}
+
+// Show full-size photo in modal
+function showFullSizePhoto(imageUrl) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <img src="${imageUrl}" alt="Full size photo" class="modal-image">
+            <button class="modal-close">×</button>
+        </div>
+    `;
+    
+    // Close modal handlers
+    const closeModal = () => {
+        document.body.removeChild(modal);
+    };
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+    
+    document.body.appendChild(modal);
+}
+
+// Add more photos
+function addMorePhotos() {
+    showState('initial-state');
+    console.log('Adding more photos');
+}
+
+// Finish and submit to JotForm
+function finish() {
+    if (isSubmitting) return;
+    
+    if (uploadedPhotos.length === 0) {
+        alert('Please upload at least one photo before finishing.');
+        return;
+    }
+    
+    isSubmitting = true;
+    
+    try {
+        // Prepare data for JotForm
+        const photoUrls = uploadedPhotos.map(photo => photo.url);
+        const submissionData = {
+            photos: photoUrls,
+            photoCount: uploadedPhotos.length,
+            uploadedAt: new Date().toISOString()
+        };
+        
+        console.log('Submitting to JotForm:', submissionData);
+        
+        // Submit to JotForm using the widget API
+        if (typeof JFCustomWidget !== 'undefined') {
+            JFCustomWidget.sendSubmit(submissionData);
+        } else {
+            console.warn('JotForm Widget API not available, logging data instead');
+            console.log('Would submit:', submissionData);
+            alert(`Upload complete! ${uploadedPhotos.length} photo(s) uploaded successfully.`);
+        }
+        
+    } catch (error) {
+        console.error('Submission error:', error);
+        alert('There was an error submitting your photos. Please try again.');
+    } finally {
+        isSubmitting = false;
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', initCameraWidget);
+
+// Initialize when page loads (fallback)
+window.addEventListener('load', () => {
+    if (document.readyState === 'complete') {
+        initCameraWidget();
+    }
+});
