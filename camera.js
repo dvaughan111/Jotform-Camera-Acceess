@@ -47,11 +47,19 @@ async function startCamera() {
         const videoElement = document.getElementById('video');
         videoElement.srcObject = stream;
         
-        // Wait for video to be ready
-        videoElement.onloadedmetadata = function() {
-            showState('camera-state');
-            console.log('Camera access successful');
-        };
+        // Use a promise to handle video play with user interaction
+        const playPromise = videoElement.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.log('Auto-play was prevented:', error);
+                // Show play button instead
+                videoElement.controls = true;
+            });
+        }
+        
+        showState('camera-state');
+        console.log('Camera access successful');
         
     } catch (error) {
         console.error(`Camera error: ${error.message}`);
@@ -254,18 +262,21 @@ function finish() {
     console.log(`Submitting ${uploadedPhotos.length} photos to JotForm`);
     
     // Send final data to JotForm
-    sendDataToJotForm();
+    sendDataToJotForm(true);
     
-    // Simulate form submission completion
-    setTimeout(() => {
-        isSubmitting = false;
-        alert(`Form submitted successfully with ${uploadedPhotos.length} photos!`);
-        console.log('Form submission completed');
-    }, 1000);
+    // For JotForm, we need to signal that we're done
+    if (typeof JFCustomWidget !== 'undefined') {
+        // This tells JotForm that the widget has completed its task
+        JFCustomWidget.submitForm();
+    }
+    
+    alert(`Form submitted successfully with ${uploadedPhotos.length} photos!`);
+    console.log('Form submission completed');
+    isSubmitting = false;
 }
 
 // Send data to JotForm
-function sendDataToJotForm() {
+function sendDataToJotForm(isFinal = false) {
     if (typeof JFCustomWidget !== 'undefined') {
         const urls = uploadedPhotos.map(photo => photo.url);
         const value = urls.length > 0 ? JSON.stringify(urls) : '';
@@ -276,11 +287,16 @@ function sendDataToJotForm() {
         });
         
         console.log('Data sent to JotForm:', value);
+        
+        // If this is the final submission, mark as complete
+        if (isFinal) {
+            JFCustomWidget.sendSubmit();
+        }
     }
     updateGallery();
 }
 
-// JotForm Widget Integration
+// JotForm Widget Integration - FIXED VERSION
 (function() {
     // Wait for JotForm Widget API
     function waitForJotForm() {
@@ -299,7 +315,7 @@ function sendDataToJotForm() {
                 });
             });
             
-            // Handle submit polling - FIXED: Return proper object
+            // CRITICAL FIX: Handle submit event properly
             JFCustomWidget.subscribe('submit', function() {
                 console.log('Submit event - photos:', uploadedPhotos.length);
                 
@@ -314,8 +330,8 @@ function sendDataToJotForm() {
             });
             
             // Handle the polling requests we see in Network tab
-            JFCustomWidget.subscribe('populate', function() {
-                console.log('Populate event');
+            JFCustomWidget.subscribe('populate', function(data) {
+                console.log('Populate event', data);
                 const urls = uploadedPhotos.map(photo => photo.url);
                 return urls.length > 0 ? JSON.stringify(urls) : '';
             });
