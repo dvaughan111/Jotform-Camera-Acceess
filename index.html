@@ -271,21 +271,6 @@
             justify-content: center;
         }
 
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         .status-message {
             padding: 10px;
             margin: 10px 0;
@@ -393,7 +378,7 @@
         let uploadedPhotos = [];
         let isSubmitting = false;
 
-        // JotForm Widget Integration with proper polling response
+        // JotForm Widget Integration - Based on official documentation
         (function() {
             function waitForJotForm() {
                 if (typeof JFCustomWidget !== 'undefined') {
@@ -401,7 +386,7 @@
                     
                     // Subscribe to ready event
                     JFCustomWidget.subscribe('ready', function() {
-                        console.log('Widget ready');
+                        console.log('Widget ready - initializing');
                         initCameraWidget();
                         
                         // Send initial empty data
@@ -411,66 +396,81 @@
                         });
                     });
                     
-                    // Submit handler for JotForm - responds to polling
+                    // CRITICAL: Handle form submission properly
                     JFCustomWidget.subscribe('submit', function() {
-                        console.log('Submit event - photos:', uploadedPhotos.length);
+                        console.log('JotForm submission requested - preparing data');
                         
+                        // Check if we're already submitting
                         if (isSubmitting) {
-                            console.log('Already submitting, please wait...');
+                            console.log('Submission already in progress');
                             return {
-                                value: 'uploading',
+                                value: 'submitting',
                                 valid: false
                             };
                         }
                         
-                        if (uploadedPhotos.length === 0) {
+                        // Mark as submitting
+                        isSubmitting = true;
+                        
+                        try {
+                            // Prepare the data for submission
+                            let submissionValue = '';
+                            
+                            if (uploadedPhotos.length > 0) {
+                                // Create a simple text summary for the form field
+                                submissionValue = uploadedPhotos.length === 1 ? 
+                                    "1 photo captured" : 
+                                    `${uploadedPhotos.length} photos captured`;
+                                
+                                console.log('Submitting value:', submissionValue);
+                            }
+                            
+                            // Return the data for form submission
                             return {
-                                value: '',
+                                value: submissionValue,
                                 valid: true
                             };
+                            
+                        } catch (error) {
+                            console.error('Error during submission:', error);
+                            return {
+                                value: 'error',
+                                valid: false,
+                                message: error.message
+                            };
+                        } finally {
+                            isSubmitting = false;
                         }
-                        
-                        // Create a simple text representation of the photos
-                        const photoText = uploadedPhotos.length === 1 ? 
-                            "1 photo captured" : 
-                            `${uploadedPhotos.length} photos captured`;
-                        
-                        return {
-                            value: photoText,
-                            valid: true
-                        };
                     });
                     
                     // Handle populate requests (when form is loaded with existing data)
                     JFCustomWidget.subscribe('populate', function(data) {
-                        console.log('Populate event with data:', data);
-                        // If we have existing data, parse it and populate the widget
+                        console.log('Populate event received:', data);
+                        
+                        // If we have existing data, we might need to parse it
                         if (data && data.value) {
-                            // You might need to parse the stored data here
-                            // For now, we'll just acknowledge the populate request
-                            console.log('Received populate data:', data.value);
+                            console.log('Existing data found:', data.value);
+                            // Here you would parse and restore any existing photos
                         }
-                        return '';
+                        
+                        // Return the current state
+                        return {
+                            value: uploadedPhotos.length > 0 ? 
+                                `${uploadedPhotos.length} photos captured` : 
+                                '',
+                            valid: true
+                        };
                     });
                     
-                    // Handle form submission (final submission)
-                    JFCustomWidget.subscribe('submit', function() {
-                        console.log('Final submit event - preparing data for submission');
-                        
-                        // For final submission, we need to format our data properly
-                        // This might involve creating hidden form fields with image data
-                        // or preparing a summary of the captured photos
-                        
-                        const submissionData = {
-                            photos: uploadedPhotos.map(photo => ({
-                                dataUrl: photo.dataUrl,
-                                timestamp: photo.timestamp
-                            })),
-                            count: uploadedPhotos.length
-                        };
+                    // Optional: Handle form reset
+                    JFCustomWidget.subscribe('reset', function() {
+                        console.log('Form reset requested');
+                        uploadedPhotos = [];
+                        updateGallery();
+                        showState('initial');
                         
                         return {
-                            value: JSON.stringify(submissionData),
+                            value: '',
                             valid: true
                         };
                     });
@@ -559,13 +559,11 @@
                 const video = document.getElementById('video');
                 video.srcObject = stream;
                 
-                // Manual play after user interaction
-                setTimeout(() => {
-                    video.play().catch(console.log);
-                }, 100);
+                // Play the video
+                video.play().catch(console.error);
                 
             } catch (error) {
-                showStatus('Camera failed: ' + error.message, 'error');
+                showStatus('Camera access denied or unavailable: ' + error.message, 'error');
                 showState('initial');
             }
         }
@@ -698,26 +696,20 @@
             // For JotForm, we need to signal that we're done
             if (typeof JFCustomWidget !== 'undefined') {
                 try {
-                    // This is the correct way to complete widget processing in JotForm
-                    isSubmitting = true;
-                    showStatus('Finalizing uploads...', 'success');
+                    showStatus('Upload completed successfully!', 'success');
                     
-                    // Send final data to JotForm
+                    // Send final data
                     sendDataToJotForm();
                     
-                    // Simulate a short delay to show the status message
-                    setTimeout(() => {
-                        JFCustomWidget.sendSubmit();
-                        console.log('JotForm submission completed');
-                        isSubmitting = false;
-                    }, 1000);
+                    // Notify JotForm that we're ready for submission
+                    JFCustomWidget.sendSubmit();
+                    
                 } catch (e) {
-                    console.error('Error completing JotForm submission:', e);
-                    isSubmitting = false;
-                    showStatus('Error completing submission: ' + e.message, 'error');
+                    console.error('Error completing submission:', e);
+                    showStatus('Error: ' + e.message, 'error');
                 }
             } else {
-                alert(`Upload completed with ${uploadedPhotos.length} photos! The form can now be submitted.`);
+                alert(`Upload completed with ${uploadedPhotos.length} photos!`);
             }
         }
 
@@ -736,7 +728,7 @@
                     console.log('Data sent to JotForm:', value);
                 }
             } catch (e) {
-                console.error('Send error:', e);
+                console.error('Error sending data to JotForm:', e);
             }
         }
 
