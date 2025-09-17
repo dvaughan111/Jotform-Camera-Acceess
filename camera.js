@@ -3,79 +3,53 @@ console.log('Camera Widget Loading...');
 let currentStream = null;
 let uploadedPhotos = [];
 
-// JotForm Widget Integration - FIXED SUBMISSION
+const CLOUDINARY_CLOUD_NAME = 'du0puu5mt';
+const CLOUDINARY_UPLOAD_PRESET = 'jotform_widget_upload';
+
+// JotForm Widget Integration
 (function() {
-    // Wait for JotForm Widget API
     function waitForJotForm() {
         if (typeof JFCustomWidget !== 'undefined') {
             console.log('JotForm Widget API available');
+            JFCustomWidget.subscribe('ready', initCameraWidget);
             
-            // Subscribe to ready event
-            JFCustomWidget.subscribe('ready', function() {
-                console.log('Widget ready');
-                initCameraWidget();
-                
-                // Send initial empty data
-                JFCustomWidget.sendData({
-                    value: '',
-                    valid: true
-                });
-            });
-            
-            // CRITICAL FIX: Proper submit handler for JotForm
+            // This is the core fix: listen for the parent form's submit event.
             JFCustomWidget.subscribe('submit', function() {
-                console.log('Submit event - photos:', uploadedPhotos.length);
-                
-                // Return simple text value (not files - that causes timeouts)
-                if (uploadedPhotos.length > 0) {
-                    // Create a simple text representation of the photos
-                    const photoText = uploadedPhotos.length === 1 ? 
-                        "1 photo captured" : 
-                        `${uploadedPhotos.length} photos captured`;
-                    
-                    return {
-                        value: photoText,
-                        valid: true
-                    };
-                } else {
-                    return {
-                        value: '',
-                        valid: true
-                    };
-                }
+                console.log('JotForm parent form is submitting. Finalizing widget data...');
+                // Get all uploaded photo URLs and join them into a single string.
+                const photoUrls = uploadedPhotos.map(photo => photo.imageUrl).join('|||');
+
+                // Return the final data to JotForm.
+                return {
+                    value: photoUrls,
+                    valid: true
+                };
             });
-            
-            // Handle populate requests
+
+            // This is also important for saving the state of the form.
             JFCustomWidget.subscribe('populate', function() {
                 console.log('Populate event');
                 if (uploadedPhotos.length > 0) {
-                    return uploadedPhotos.length === 1 ? 
-                        "1 photo captured" : 
-                        `${uploadedPhotos.length} photos captured`;
+                    return uploadedPhotos.map(photo => photo.imageUrl).join('|||');
                 }
                 return '';
             });
-            
         } else {
             setTimeout(waitForJotForm, 50);
         }
     }
-    
     waitForJotForm();
 })();
 
 function initCameraWidget() {
     console.log('Initializing camera widget...');
-    
-    // Set up event listeners
     document.getElementById('start-btn').addEventListener('click', startCamera);
     document.getElementById('capture-btn').addEventListener('click', capturePhoto);
     document.getElementById('cancel-btn').addEventListener('click', cancelCamera);
     document.getElementById('approve-btn').addEventListener('click', approvePhoto);
     document.getElementById('retake-btn').addEventListener('click', retakePhoto);
     document.getElementById('add-more-btn').addEventListener('click', addMorePhotos);
-    document.getElementById('done-btn').addEventListener('click', finish);
-    
+    // Removed the event listener for 'done-btn' because it's no longer needed for submission.
     console.log('Camera widget initialized successfully');
 }
 
@@ -85,28 +59,23 @@ function showState(state) {
         const el = document.getElementById(s + '-state');
         if (el) el.style.display = 'none';
     });
-    
     const currentState = document.getElementById(state + '-state');
     if (currentState) {
         currentState.style.display = 'flex';
     }
-    
     if (state === 'gallery') {
         updateGallery();
     }
-    
-    // Update widget height for JotForm
     updateHeight(state);
 }
 
 function updateHeight(state) {
-    const heights = { 
-        initial: 150, 
-        camera: 400, 
-        preview: 400, 
+    const heights = {
+        initial: 150,
+        camera: 400,
+        preview: 400,
         gallery: 300 + (uploadedPhotos.length * 180)
     };
-    
     try {
         if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.requestFrameResize) {
             JFCustomWidget.requestFrameResize(heights[state] || 150);
@@ -119,20 +88,15 @@ function updateHeight(state) {
 async function startCamera() {
     try {
         showState('camera');
-        
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
         });
-        
         currentStream = stream;
         const video = document.getElementById('video');
         video.srcObject = stream;
-        
-        // Manual play after user interaction
         setTimeout(() => {
             video.play().catch(console.log);
         }, 100);
-        
     } catch (error) {
         alert('Camera failed: ' + error.message);
         showState('initial');
@@ -149,7 +113,6 @@ function stopCamera() {
 function capturePhoto() {
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    
     if (video && canvas && video.videoWidth > 0) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -169,43 +132,62 @@ function retakePhoto() {
     startCamera();
 }
 
-function approvePhoto() {
+async function approvePhoto() {
     const canvas = document.getElementById('canvas');
     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
     
-    uploadedPhotos.push({
-        dataUrl: dataUrl,
-        timestamp: Date.now()
-    });
-    
-    console.log('Photo added, total:', uploadedPhotos.length);
-    sendDataToJotForm();
-    showState('gallery');
+    // Upload to Cloudinary
+    try {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: JSON.stringify({
+                file: dataUrl,
+                upload_preset: CLOUDINARY_UPLOAD_PRESET
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        const imageUrl = data.secure_url;
+        
+        if (!imageUrl) {
+            throw new Error('Cloudinary upload failed.');
+        }
+        
+        uploadedPhotos.push({
+            dataUrl: dataUrl,
+            imageUrl: imageUrl,
+            timestamp: Date.now()
+        });
+        
+        console.log('Photo uploaded, URL:', imageUrl);
+        sendDataToJotForm();
+        showState('gallery');
+        
+    } catch (error) {
+        console.error('Cloudinary upload error:', error);
+        alert('Failed to upload photo. Please check your Cloudinary configuration.');
+    }
 }
 
 function updateGallery() {
     const list = document.getElementById('photos-list');
-    
     if (list) {
         list.innerHTML = '';
-        
         if (uploadedPhotos.length === 0) {
             list.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
             return;
         }
-        
         uploadedPhotos.forEach((photo, index) => {
             const photoItem = document.createElement('div');
             photoItem.className = 'photo-item';
-            
             const img = document.createElement('img');
             img.src = photo.dataUrl;
             img.className = 'photo-thumbnail';
             img.alt = `Uploaded photo ${index + 1}`;
-            
-            // Make image clickable to view larger version
             img.addEventListener('click', () => viewPhoto(photo.dataUrl));
-            
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'photo-delete-btn';
             deleteBtn.innerHTML = '×';
@@ -213,7 +195,6 @@ function updateGallery() {
                 e.stopPropagation();
                 deletePhoto(index);
             });
-            
             photoItem.appendChild(img);
             photoItem.appendChild(deleteBtn);
             list.appendChild(photoItem);
@@ -221,7 +202,6 @@ function updateGallery() {
     }
 }
 
-// View photo in modal
 function viewPhoto(url) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -231,21 +211,17 @@ function viewPhoto(url) {
             <button class="modal-close">×</button>
         </div>
     `;
-    
     modal.querySelector('.modal-close').addEventListener('click', () => {
         document.body.removeChild(modal);
     });
-    
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             document.body.removeChild(modal);
         }
     });
-    
     document.body.appendChild(modal);
 }
 
-// Delete a photo
 function deletePhoto(index) {
     if (confirm('Are you sure you want to delete this photo?')) {
         uploadedPhotos.splice(index, 1);
@@ -258,44 +234,29 @@ function addMorePhotos() {
     showState('initial');
 }
 
+// NOTE: This 'finish' function is no longer needed for the main submission process
+// because the 'submit' event listener handles it automatically.
 function finish() {
-    // For JotForm, we need to signal that we're done
-    if (typeof JFCustomWidget !== 'undefined') {
-        try {
-            // This is the correct way to complete widget processing in JotForm
-            JFCustomWidget.sendSubmit();
-            console.log('JotForm submission completed');
-        } catch (e) {
-            console.error('Error completing JotForm submission:', e);
-        }
-    }
-    
     alert(`Upload completed with ${uploadedPhotos.length} photos! The form can now be submitted.`);
 }
 
 function sendDataToJotForm() {
     try {
         if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-            const value = uploadedPhotos.length > 0 ? 
-                (uploadedPhotos.length === 1 ? "1 photo captured" : `${uploadedPhotos.length} photos captured`) : 
-                '';
-            
+            const photoUrls = uploadedPhotos.map(photo => photo.imageUrl).join('|||');
             JFCustomWidget.sendData({
-                value: value,
+                value: photoUrls,
                 valid: true
             });
-            
-            console.log('Data sent to JotForm:', value);
+            console.log('Data sent to JotForm:', photoUrls);
         }
     } catch (e) {
         console.error('Send error:', e);
     }
 }
 
-// Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM content loaded');
-    // If JotForm widget API is not available, initialize directly
     if (typeof JFCustomWidget === 'undefined') {
         console.log('JotForm not detected, initializing directly');
         initCameraWidget();
