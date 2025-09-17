@@ -3,7 +3,7 @@ console.log('Camera Widget Loading...');
 let currentStream = null;
 let uploadedPhotos = [];
 
-// JotForm Widget - CORRECT PATTERN
+// JotForm Widget Integration
 (function() {
     // Wait for JotForm Widget API
     function waitForJotForm() {
@@ -13,6 +13,7 @@ let uploadedPhotos = [];
             // Subscribe to ready event
             JFCustomWidget.subscribe('ready', function() {
                 console.log('Widget ready');
+                initCameraWidget();
                 
                 // Send initial empty data
                 JFCustomWidget.sendData({
@@ -21,11 +22,11 @@ let uploadedPhotos = [];
                 });
             });
             
-            // CRITICAL: Handle submit polling
+            // Handle submit polling
             JFCustomWidget.subscribe('submit', function() {
                 console.log('Submit event - photos:', uploadedPhotos.length);
                 
-                // Return simple text value (not files - that causes timeouts)
+                // Return simple text value
                 if (uploadedPhotos.length > 0) {
                     return {
                         value: `${uploadedPhotos.length} photos captured`,
@@ -39,7 +40,7 @@ let uploadedPhotos = [];
                 }
             });
             
-            // CRITICAL: Handle the polling requests we see in Network tab
+            // Handle the polling requests
             JFCustomWidget.subscribe('populate', function() {
                 console.log('Populate event');
                 return uploadedPhotos.length > 0 ? `${uploadedPhotos.length} photos` : '';
@@ -54,61 +55,18 @@ let uploadedPhotos = [];
 })();
 
 function initCameraWidget() {
-    const container = document.getElementById('camera-widget');
-    if (!container) return;
+    console.log('Initializing camera widget...');
     
-    container.innerHTML = `
-        <div style="padding: 15px; text-align: center; background: #f8f9fa; border-radius: 8px;">
-            <div id="initial-state">
-                <button id="start-btn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Take Photo</button>
-                <p style="margin-top: 8px; color: #666; font-size: 14px;">Click to start camera</p>
-            </div>
-            
-            <div id="camera-state" style="display: none;">
-                <video id="video" playsinline muted style="width: 100%; max-width: 300px; height: 200px; background: #000; border-radius: 4px; margin-bottom: 10px;"></video>
-                <div>
-                    <button id="capture-btn" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; margin: 0 5px; cursor: pointer;">Capture</button>
-                    <button id="cancel-btn" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; margin: 0 5px; cursor: pointer;">Cancel</button>
-                </div>
-            </div>
-            
-            <div id="preview-state" style="display: none;">
-                <canvas id="canvas" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;"></canvas>
-                <div>
-                    <button id="approve-btn" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; margin: 0 5px; cursor: pointer;">Approve</button>
-                    <button id="retake-btn" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; margin: 0 5px; cursor: pointer;">Retake</button>
-                </div>
-            </div>
-            
-            <div id="gallery-state" style="display: none;">
-                <p style="color: #28a745; font-weight: bold;">Photo added!</p>
-                <div id="photos-list" style="margin: 10px 0;"></div>
-                <div>
-                    <button id="add-more-btn" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; margin: 0 5px; cursor: pointer;">Add More</button>
-                    <button id="done-btn" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; margin: 0 5px; cursor: pointer;">Done (0)</button>
-                </div>
-            </div>
-        </div>
-    `;
+    // Set up event listeners
+    document.getElementById('start-btn').addEventListener('click', startCamera);
+    document.getElementById('capture-btn').addEventListener('click', capturePhoto);
+    document.getElementById('cancel-btn').addEventListener('click', cancelCamera);
+    document.getElementById('approve-btn').addEventListener('click', approvePhoto);
+    document.getElementById('retake-btn').addEventListener('click', retakePhoto);
+    document.getElementById('add-more-btn').addEventListener('click', addMorePhotos);
+    document.getElementById('done-btn').addEventListener('click', finish);
     
-    setupHandlers();
-    updateHeight(80);
-}
-
-function setupHandlers() {
-    document.getElementById('start-btn').onclick = startCamera;
-    document.getElementById('capture-btn').onclick = capturePhoto;
-    document.getElementById('cancel-btn').onclick = () => {
-        stopCamera();
-        showState('initial');
-    };
-    document.getElementById('approve-btn').onclick = approvePhoto;
-    document.getElementById('retake-btn').onclick = () => showState('camera');
-    document.getElementById('add-more-btn').onclick = () => showState('initial');
-    document.getElementById('done-btn').onclick = () => {
-        sendDataToJotForm();
-        alert(`${uploadedPhotos.length} photos ready!`);
-    };
+    console.log('Camera widget initialized successfully');
 }
 
 function showState(state) {
@@ -118,20 +76,30 @@ function showState(state) {
         if (el) el.style.display = 'none';
     });
     
-    document.getElementById(state + '-state').style.display = 'block';
+    const currentState = document.getElementById(state + '-state');
+    if (currentState) {
+        currentState.style.display = 'block';
+    }
     
     if (state === 'gallery') {
         updateGallery();
     }
     
-    const heights = { initial: 80, camera: 280, preview: 280, gallery: 150 };
-    updateHeight(heights[state] || 80);
+    // Update widget height for JotForm
+    updateHeight(state);
 }
 
-function updateHeight(h) {
+function updateHeight(state) {
+    const heights = { 
+        initial: 100, 
+        camera: 300, 
+        preview: 300, 
+        gallery: 200 + (uploadedPhotos.length * 60)
+    };
+    
     try {
         if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.requestFrameResize) {
-            JFCustomWidget.requestFrameResize(h);
+            JFCustomWidget.requestFrameResize(heights[state] || 100);
         }
     } catch (e) {
         console.log('Height error:', e);
@@ -181,6 +149,16 @@ function capturePhoto() {
     }
 }
 
+function cancelCamera() {
+    stopCamera();
+    showState('initial');
+}
+
+function retakePhoto() {
+    showState('camera');
+    startCamera();
+}
+
 function approvePhoto() {
     const canvas = document.getElementById('canvas');
     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
@@ -197,13 +175,31 @@ function approvePhoto() {
 
 function updateGallery() {
     const list = document.getElementById('photos-list');
-    const btn = document.getElementById('done-btn');
+    const countElement = document.getElementById('photo-count');
+    const doneBtn = document.getElementById('done-btn');
     
-    btn.textContent = `Done (${uploadedPhotos.length})`;
+    if (countElement) {
+        countElement.textContent = uploadedPhotos.length;
+    }
     
-    list.innerHTML = uploadedPhotos.map((photo, i) => 
-        `<img src="${photo.dataUrl}" style="width: 50px; height: 50px; margin: 2px; border-radius: 4px; object-fit: cover;">`
-    ).join('');
+    if (doneBtn) {
+        doneBtn.textContent = `Done (${uploadedPhotos.length})`;
+    }
+    
+    if (list) {
+        list.innerHTML = uploadedPhotos.map((photo, i) => 
+            `<img src="${photo.dataUrl}" style="width: 50px; height: 50px; margin: 2px; border-radius: 4px; object-fit: cover;">`
+        ).join('');
+    }
+}
+
+function addMorePhotos() {
+    showState('initial');
+}
+
+function finish() {
+    sendDataToJotForm();
+    alert(`${uploadedPhotos.length} photos ready!`);
 }
 
 function sendDataToJotForm() {
@@ -223,20 +219,12 @@ function sendDataToJotForm() {
     }
 }
 
-// Initialize
-function init() {
-    const container = document.getElementById('camera-widget');
-    if (container) {
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM content loaded');
+    // If JotForm widget API is not available, initialize directly
+    if (typeof JFCustomWidget === 'undefined') {
+        console.log('JotForm not detected, initializing directly');
         initCameraWidget();
-    } else {
-        setTimeout(init, 100);
     }
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
-
-console.log('Camera widget loaded');
+});
