@@ -379,8 +379,7 @@
             </div>
             <div class="actions-container">
                 <button id="add-more-btn" class="btn primary-btn">Add More</button>
-                <!-- Remove the done-btn if not needed -->
-                <button id="done-btn" class="btn success-btn" style="display: none;">Complete Upload</button>
+                <button id="done-btn" class="btn success-btn">Complete Upload</button>
             </div>
         </div>
 
@@ -394,7 +393,7 @@
         let uploadedPhotos = [];
         let isSubmitting = false;
 
-        // JotForm Widget Integration
+        // JotForm Widget Integration with proper polling response
         (function() {
             function waitForJotForm() {
                 if (typeof JFCustomWidget !== 'undefined') {
@@ -412,7 +411,7 @@
                         });
                     });
                     
-                    // Submit handler for JotForm
+                    // Submit handler for JotForm - responds to polling
                     JFCustomWidget.subscribe('submit', function() {
                         console.log('Submit event - photos:', uploadedPhotos.length);
                         
@@ -442,15 +441,38 @@
                         };
                     });
                     
-                    // Handle populate requests
-                    JFCustomWidget.subscribe('populate', function() {
-                        console.log('Populate event');
-                        if (uploadedPhotos.length > 0) {
-                            return uploadedPhotos.length === 1 ? 
-                                "1 photo captured" : 
-                                `${uploadedPhotos.length} photos captured`;
+                    // Handle populate requests (when form is loaded with existing data)
+                    JFCustomWidget.subscribe('populate', function(data) {
+                        console.log('Populate event with data:', data);
+                        // If we have existing data, parse it and populate the widget
+                        if (data && data.value) {
+                            // You might need to parse the stored data here
+                            // For now, we'll just acknowledge the populate request
+                            console.log('Received populate data:', data.value);
                         }
                         return '';
+                    });
+                    
+                    // Handle form submission (final submission)
+                    JFCustomWidget.subscribe('submit', function() {
+                        console.log('Final submit event - preparing data for submission');
+                        
+                        // For final submission, we need to format our data properly
+                        // This might involve creating hidden form fields with image data
+                        // or preparing a summary of the captured photos
+                        
+                        const submissionData = {
+                            photos: uploadedPhotos.map(photo => ({
+                                dataUrl: photo.dataUrl,
+                                timestamp: photo.timestamp
+                            })),
+                            count: uploadedPhotos.length
+                        };
+                        
+                        return {
+                            value: JSON.stringify(submissionData),
+                            valid: true
+                        };
                     });
                     
                 } else {
@@ -471,6 +493,7 @@
             document.getElementById('approve-btn').addEventListener('click', approvePhoto);
             document.getElementById('retake-btn').addEventListener('click', retakePhoto);
             document.getElementById('add-more-btn').addEventListener('click', addMorePhotos);
+            document.getElementById('done-btn').addEventListener('click', finish);
             
             console.log('Camera widget initialized successfully');
         }
@@ -669,6 +692,33 @@
 
         function addMorePhotos() {
             showState('initial');
+        }
+
+        function finish() {
+            // For JotForm, we need to signal that we're done
+            if (typeof JFCustomWidget !== 'undefined') {
+                try {
+                    // This is the correct way to complete widget processing in JotForm
+                    isSubmitting = true;
+                    showStatus('Finalizing uploads...', 'success');
+                    
+                    // Send final data to JotForm
+                    sendDataToJotForm();
+                    
+                    // Simulate a short delay to show the status message
+                    setTimeout(() => {
+                        JFCustomWidget.sendSubmit();
+                        console.log('JotForm submission completed');
+                        isSubmitting = false;
+                    }, 1000);
+                } catch (e) {
+                    console.error('Error completing JotForm submission:', e);
+                    isSubmitting = false;
+                    showStatus('Error completing submission: ' + e.message, 'error');
+                }
+            } else {
+                alert(`Upload completed with ${uploadedPhotos.length} photos! The form can now be submitted.`);
+            }
         }
 
         function sendDataToJotForm() {
