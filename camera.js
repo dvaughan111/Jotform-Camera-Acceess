@@ -2,6 +2,7 @@ console.log('Camera Widget Loading...');
 
 let currentStream = null;
 let uploadedPhotos = [];
+let isSubmitting = false;
 
 // JotForm Widget Integration
 (function() {
@@ -22,21 +23,15 @@ let uploadedPhotos = [];
                 });
             });
             
-            // Handle submit polling
+            // Handle submit polling - FIXED: Return simple string, not object
             JFCustomWidget.subscribe('submit', function() {
                 console.log('Submit event - photos:', uploadedPhotos.length);
                 
-                // Return simple text value
+                // Return simple text value (not files - that causes timeouts)
                 if (uploadedPhotos.length > 0) {
-                    return {
-                        value: `${uploadedPhotos.length} photos captured`,
-                        valid: true
-                    };
+                    return `${uploadedPhotos.length} photos captured`;
                 } else {
-                    return {
-                        value: '',
-                        valid: true
-                    };
+                    return '';
                 }
             });
             
@@ -78,7 +73,7 @@ function showState(state) {
     
     const currentState = document.getElementById(state + '-state');
     if (currentState) {
-        currentState.style.display = 'block';
+        currentState.style.display = 'flex';
     }
     
     if (state === 'gallery') {
@@ -91,15 +86,15 @@ function showState(state) {
 
 function updateHeight(state) {
     const heights = { 
-        initial: 100, 
-        camera: 300, 
-        preview: 300, 
-        gallery: 200 + (uploadedPhotos.length * 60)
+        initial: 150, 
+        camera: 400, 
+        preview: 400, 
+        gallery: 300 + (uploadedPhotos.length * 180)
     };
     
     try {
         if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.requestFrameResize) {
-            JFCustomWidget.requestFrameResize(heights[state] || 100);
+            JFCustomWidget.requestFrameResize(heights[state] || 150);
         }
     } catch (e) {
         console.log('Height error:', e);
@@ -187,9 +182,70 @@ function updateGallery() {
     }
     
     if (list) {
-        list.innerHTML = uploadedPhotos.map((photo, i) => 
-            `<img src="${photo.dataUrl}" style="width: 50px; height: 50px; margin: 2px; border-radius: 4px; object-fit: cover;">`
-        ).join('');
+        list.innerHTML = '';
+        
+        if (uploadedPhotos.length === 0) {
+            list.innerHTML = '<div class="empty-state">No photos uploaded yet</div>';
+            return;
+        }
+        
+        uploadedPhotos.forEach((photo, index) => {
+            const photoItem = document.createElement('div');
+            photoItem.className = 'photo-item';
+            
+            const img = document.createElement('img');
+            img.src = photo.dataUrl;
+            img.className = 'photo-thumbnail';
+            img.alt = `Uploaded photo ${index + 1}`;
+            
+            // Make image clickable to view larger version
+            img.addEventListener('click', () => viewPhoto(photo.dataUrl));
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'photo-delete-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deletePhoto(index);
+            });
+            
+            photoItem.appendChild(img);
+            photoItem.appendChild(deleteBtn);
+            list.appendChild(photoItem);
+        });
+    }
+}
+
+// View photo in modal
+function viewPhoto(url) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <img src="${url}" class="modal-image" alt="Full size photo">
+            <button class="modal-close">×</button>
+        </div>
+    `;
+    
+    modal.querySelector('.modal-close').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+// Delete a photo
+function deletePhoto(index) {
+    if (confirm('Are you sure you want to delete this photo?')) {
+        uploadedPhotos.splice(index, 1);
+        updateGallery();
+        sendDataToJotForm();
     }
 }
 
@@ -198,7 +254,19 @@ function addMorePhotos() {
 }
 
 function finish() {
+    // Send final data to JotForm
     sendDataToJotForm();
+    
+    // For JotForm, we need to signal that we're done
+    if (typeof JFCustomWidget !== 'undefined') {
+        try {
+            // This tells JotForm that the widget has completed its task
+            JFCustomWidget.submitForm();
+        } catch (e) {
+            console.error('Error submitting to JotForm:', e);
+        }
+    }
+    
     alert(`${uploadedPhotos.length} photos ready!`);
 }
 
