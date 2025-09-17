@@ -379,7 +379,8 @@
             </div>
             <div class="actions-container">
                 <button id="add-more-btn" class="btn primary-btn">Add More</button>
-                <button id="done-btn" class="btn success-btn">Complete Upload</button>
+                <!-- Remove the done-btn if not needed -->
+                <button id="done-btn" class="btn success-btn" style="display: none;">Complete Upload</button>
             </div>
         </div>
 
@@ -470,7 +471,6 @@
             document.getElementById('approve-btn').addEventListener('click', approvePhoto);
             document.getElementById('retake-btn').addEventListener('click', retakePhoto);
             document.getElementById('add-more-btn').addEventListener('click', addMorePhotos);
-            document.getElementById('done-btn').addEventListener('click', finish);
             
             console.log('Camera widget initialized successfully');
         }
@@ -562,7 +562,11 @@
                 // Match the canvas aspect ratio to the video
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Draw the current video frame to the canvas
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
                 stopCamera();
                 showState('preview');
             }
@@ -665,30 +669,6 @@
 
         function addMorePhotos() {
             showState('initial');
-        }
-
-        function finish() {
-            // For JotForm, we need to signal that we're done
-            if (typeof JFCustomWidget !== 'undefined') {
-                try {
-                    // This is the correct way to complete widget processing in JotForm
-                    isSubmitting = true;
-                    showStatus('Finalizing uploads...', 'success');
-                    
-                    // Simulate a short delay to show the status message
-                    setTimeout(() => {
-                        JFCustomWidget.sendSubmit();
-                        console.log('JotForm submission completed');
-                        isSubmitting = false;
-                    }, 1000);
-                } catch (e) {
-                    console.error('Error completing JotForm submission:', e);
-                    isSubmitting = false;
-                    showStatus('Error completing submission: ' + e.message, 'error');
-                }
-            } else {
-                alert(`Upload completed with ${uploadedPhotos.length} photos! The form can now be submitted.`);
-            }
         }
 
         function sendDataToJotForm() {
