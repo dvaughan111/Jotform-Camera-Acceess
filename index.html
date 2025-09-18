@@ -7,15 +7,16 @@
 <style>
 body { font-family: Arial,sans-serif; background:#f8f9fa; padding:10px; }
 .widget-container { max-width:500px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.1); overflow:hidden; padding:15px; }
-.video-container { width:100%; height:300px; background:#000; border-radius:8px; overflow:hidden; margin-bottom:15px; position:relative; }
-#video { width:100%; height:100%; object-fit:cover; }
+.video-container { width:100%; height:300px; background:#000; border-radius:8px; overflow:hidden; margin-bottom:10px; position:relative; }
+#video { width:100%; height:100%; object-fit:cover; border-radius:8px; }
+.gallery { display:flex; flex-direction:column; width:100%; margin-top:15px; }
+.thumb-wrapper { position:relative; margin-bottom:10px; }
 .photo-thumb { width:100%; height:300px; object-fit:cover; border-radius:8px; }
-.thumb-wrapper { position:relative; margin-bottom:15px; }
 .delete-btn { position:absolute; top:8px; right:8px; background:#dc3545; color:white; border:none; border-radius:50%; width:32px; height:32px; font-size:18px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; z-index:10; }
 .delete-btn:hover { background:#c82333; }
-.btn { padding:14px 28px; color:white; border:none; border-radius:8px; cursor:pointer; font-size:16px; font-weight:600; transition:all .2s ease; margin:8px; background:#007bff; }
+.button-row { display:flex; justify-content:center; margin-top:10px; gap:15px; flex-wrap:wrap; }
+.btn { padding:12px 24px; color:white; border:none; border-radius:8px; cursor:pointer; font-size:16px; font-weight:600; transition:all .2s ease; background:#007bff; }
 .btn:hover { background:#0056b3; transform:translateY(-2px); }
-.gallery { display:flex; flex-direction:column; width:100%; }
 </style>
 </head>
 <body>
@@ -24,7 +25,9 @@ body { font-family: Arial,sans-serif; background:#f8f9fa; padding:10px; }
   <div class="video-container">
     <video id="video" playsinline autoplay muted></video>
   </div>
-  <button id="capture-btn" class="btn">Take Picture</button>
+  <div class="button-row">
+    <button id="capture-btn" class="btn">Take Picture</button>
+  </div>
   <div id="gallery" class="gallery"></div>
 </div>
 
@@ -56,7 +59,7 @@ function stopCamera() {
   if(currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
 }
 
-// Update gallery display
+// Update gallery
 function updateGallery() {
   galleryDiv.innerHTML = '';
   capturedPhotos.forEach((photo, index) => {
@@ -81,10 +84,9 @@ function updateGallery() {
   });
 }
 
-// Send data to JotForm for PDF
+// Send data to JotForm (works for PDF)
 function sendDataToJotForm() {
   if(typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-    // Use original submit-friendly format
     let submissionText = capturedPhotos.map((p,i) => `[Image ${i+1}]`).join(', ');
     JFCustomWidget.sendData({ value: submissionText, valid: true });
   }
@@ -93,16 +95,16 @@ function sendDataToJotForm() {
 // Capture photo
 function capturePhoto() {
   if(video.videoWidth === 0 || video.videoHeight === 0){
-    setTimeout(capturePhoto,100); // wait until video is ready
+    setTimeout(capturePhoto,100);
     return;
   }
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-
   const dataUrl = canvas.toDataURL('image/jpeg',0.9);
 
+  // Upload using JotForm method
   if(typeof JFCustomWidget !== 'undefined' && JFCustomWidget.uploadFile) {
     const fileName = 'photo_' + Date.now() + '.jpg';
     canvas.toBlob(blob => {
@@ -114,7 +116,6 @@ function capturePhoto() {
       });
     }, 'image/jpeg', 0.9);
   } else {
-    // fallback for standalone testing
     capturedPhotos.push({ dataUrl });
     updateGallery();
   }
@@ -129,7 +130,7 @@ if(typeof JFCustomWidget !== 'undefined') {
     JFCustomWidget.sendData({ value:'', valid:true });
   });
 } else {
-  startCamera(); // standalone
+  startCamera();
 }
 </script>
 
