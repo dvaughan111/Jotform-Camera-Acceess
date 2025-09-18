@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camera Widget</title>
+<title>JotForm Camera Widget</title>
 <style>
 body { font-family: Arial,sans-serif; background:#f8f9fa; padding:10px; }
 .widget-container { max-width:500px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.1); overflow:hidden; padding:15px; }
-.video-container, .photo-container { width:100%; height:300px; background:#000; border-radius:8px; overflow:hidden; position:relative; margin-bottom:15px; }
+.video-container { width:100%; height:300px; background:#000; border-radius:8px; overflow:hidden; margin-bottom:15px; position:relative; }
 #video { width:100%; height:100%; object-fit:cover; }
 .photo-thumb { width:100%; height:300px; object-fit:cover; border-radius:8px; }
 .thumb-wrapper { position:relative; margin-bottom:15px; }
@@ -21,17 +21,11 @@ body { font-family: Arial,sans-serif; background:#f8f9fa; padding:10px; }
 <body>
 
 <div id="camera-widget" class="widget-container">
-  <div id="camera-state" class="state-container">
-    <div class="video-container">
-      <video id="video" playsinline autoplay muted></video>
-    </div>
-    <button id="capture-btn" class="btn">Take Picture</button>
+  <div class="video-container">
+    <video id="video" playsinline autoplay muted></video>
   </div>
-
-  <div id="gallery-state" class="state-container" style="display:none;">
-    <div id="gallery" class="gallery"></div>
-    <button id="take-more-btn" class="btn">Take More Pictures</button>
-  </div>
+  <button id="capture-btn" class="btn">Take Picture</button>
+  <div id="gallery" class="gallery"></div>
 </div>
 
 <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
@@ -41,95 +35,103 @@ let capturedPhotos = [];
 
 const video = document.getElementById('video');
 const captureBtn = document.getElementById('capture-btn');
-const takeMoreBtn = document.getElementById('take-more-btn');
-const galleryState = document.getElementById('gallery-state');
-const cameraState = document.getElementById('camera-state');
 const galleryDiv = document.getElementById('gallery');
 
+// Start camera
 async function startCamera() {
-  showState('camera');
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video:true });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
     currentStream = stream;
     video.srcObject = stream;
     await new Promise(resolve => video.onloadedmetadata = resolve);
-    await video.play();
+    video.play();
   } catch(err) {
     console.error('Camera error', err);
     alert('Camera not available: ' + err.message);
   }
 }
 
+// Stop camera
 function stopCamera() {
-  if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; }
+  if(currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
 }
 
-function showState(state){
-  if(state==='camera'){ cameraState.style.display='flex'; galleryState.style.display='none'; }
-  else { cameraState.style.display='none'; galleryState.style.display='flex'; }
-}
-
-function updateGallery(){
-  galleryDiv.innerHTML='';
-  capturedPhotos.forEach((photo,index)=>{
-    const wrapper=document.createElement('div');
-    wrapper.className='thumb-wrapper';
-    const img=document.createElement('img');
-    img.src=photo.dataUrl;
-    img.className='photo-thumb';
+// Update gallery display
+function updateGallery() {
+  galleryDiv.innerHTML = '';
+  capturedPhotos.forEach((photo, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'thumb-wrapper';
+    const img = document.createElement('img');
+    img.src = photo.dataUrl;
+    img.className = 'photo-thumb';
     wrapper.appendChild(img);
-    const del=document.createElement('button');
-    del.className='delete-btn';
-    del.innerHTML='×';
-    del.onclick=()=>{
+
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.innerHTML = '×';
+    del.onclick = () => {
       capturedPhotos.splice(index,1);
       sendDataToJotForm();
       updateGallery();
     };
     wrapper.appendChild(del);
+
     galleryDiv.appendChild(wrapper);
   });
 }
 
-function sendDataToJotForm(){
-  if(typeof JFCustomWidget!=='undefined' && JFCustomWidget.sendData){
-    const val=capturedPhotos.map(p=>p.filePath).join('\n');
-    JFCustomWidget.sendData({value:val, valid:true});
+// Send data to JotForm for PDF
+function sendDataToJotForm() {
+  if(typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
+    // Use original submit-friendly format
+    let submissionText = capturedPhotos.map((p,i) => `[Image ${i+1}]`).join(', ');
+    JFCustomWidget.sendData({ value: submissionText, valid: true });
   }
 }
 
-function capturePhoto(){
-  if(!video.videoWidth || !video.videoHeight){ setTimeout(capturePhoto,100); return; }
-  const canvas=document.createElement('canvas');
-  canvas.width=video.videoWidth;
-  canvas.height=video.videoHeight;
-  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-  canvas.toBlob(blob=>{
-    if(!blob){ console.error('Failed to create blob'); return; }
-    const dataUrl=canvas.toDataURL('image/jpeg',0.9);
-    if(typeof JFCustomWidget!=='undefined'){
-      const fileName='photo_'+Date.now()+'.jpg';
-      JFCustomWidget.uploadFile(blob,fileName,function(response){
-        capturedPhotos.push({dataUrl,filePath:response.filePath});
+// Capture photo
+function capturePhoto() {
+  if(video.videoWidth === 0 || video.videoHeight === 0){
+    setTimeout(capturePhoto,100); // wait until video is ready
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const dataUrl = canvas.toDataURL('image/jpeg',0.9);
+
+  if(typeof JFCustomWidget !== 'undefined' && JFCustomWidget.uploadFile) {
+    const fileName = 'photo_' + Date.now() + '.jpg';
+    canvas.toBlob(blob => {
+      if(!blob) return;
+      JFCustomWidget.uploadFile(blob, fileName, function(response){
+        capturedPhotos.push({ dataUrl, filePath: response.filePath });
         sendDataToJotForm();
         updateGallery();
-        showState('gallery');
       });
-    }
-  },'image/jpeg',0.9);
-  stopCamera();
+    }, 'image/jpeg', 0.9);
+  } else {
+    // fallback for standalone testing
+    capturedPhotos.push({ dataUrl });
+    updateGallery();
+  }
 }
 
-captureBtn.addEventListener('click',capturePhoto);
-takeMoreBtn.addEventListener('click',startCamera);
+captureBtn.addEventListener('click', capturePhoto);
 
-if(typeof JFCustomWidget!=='undefined'){
-  JFCustomWidget.subscribe('ready',function(){
+// Initialize camera on widget ready
+if(typeof JFCustomWidget !== 'undefined') {
+  JFCustomWidget.subscribe('ready', function(){
     startCamera();
-    JFCustomWidget.sendData({value:'', valid:true});
+    JFCustomWidget.sendData({ value:'', valid:true });
   });
-} else { startCamera(); }
-
+} else {
+  startCamera(); // standalone
+}
 </script>
+
 </body>
 </html>
