@@ -27,6 +27,7 @@ body { font-family: Arial,sans-serif; background:#f8f9fa; padding:10px; }
   </div>
   <div class="button-row">
     <button id="capture-btn" class="btn">Take Picture</button>
+    <button id="add-more-btn" class="btn" style="display:none;">Add More Images</button>
   </div>
   <div id="gallery" class="gallery"></div>
 </div>
@@ -38,6 +39,7 @@ let capturedPhotos = [];
 
 const video = document.getElementById('video');
 const captureBtn = document.getElementById('capture-btn');
+const addMoreBtn = document.getElementById('add-more-btn');
 const galleryDiv = document.getElementById('gallery');
 
 // Start camera
@@ -84,7 +86,7 @@ function updateGallery() {
   });
 }
 
-// Send data to JotForm (works for PDF)
+// Send data to JotForm (PDF compatible)
 function sendDataToJotForm() {
   if(typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
     let submissionText = capturedPhotos.map((p,i) => `[Image ${i+1}]`).join(', ');
@@ -113,15 +115,21 @@ function capturePhoto() {
         capturedPhotos.push({ dataUrl, filePath: response.filePath });
         sendDataToJotForm();
         updateGallery();
+        addMoreBtn.style.display = 'inline-block';
       });
     }, 'image/jpeg', 0.9);
   } else {
     capturedPhotos.push({ dataUrl });
     updateGallery();
+    addMoreBtn.style.display = 'inline-block';
   }
 }
 
-captureBtn.addEventListener('click', capturePhoto);
+// Add more photos
+addMoreBtn.addEventListener('click', () => {
+  addMoreBtn.style.display = 'none';
+  startCamera();
+});
 
 // Initialize camera on widget ready
 if(typeof JFCustomWidget !== 'undefined') {
@@ -132,6 +140,8 @@ if(typeof JFCustomWidget !== 'undefined') {
 } else {
   startCamera();
 }
+
+captureBtn.addEventListener('click', capturePhoto);
 </script>
 
 </body>
