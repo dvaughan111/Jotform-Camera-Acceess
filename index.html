@@ -105,7 +105,7 @@
     <div class="video-container">
       <video id="video" playsinline autoplay muted></video>
     </div>
-    <button id="capture-btn" class="btn">Capture</button>
+    <button id="capture-btn" class="btn">Take Picture</button>
   </div>
 
   <div id="gallery-state" class="state-container" style="display:none;">
@@ -116,125 +116,127 @@
 
 <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 <script>
-  let currentStream = null;
-  let capturedPhotos = [];
+let currentStream = null;
+let capturedPhotos = [];
 
-  const video = document.getElementById('video');
-  const captureBtn = document.getElementById('capture-btn');
-  const takeMoreBtn = document.getElementById('take-more-btn');
-  const galleryState = document.getElementById('gallery-state');
-  const cameraState = document.getElementById('camera-state');
-  const galleryDiv = document.getElementById('gallery');
+const video = document.getElementById('video');
+const captureBtn = document.getElementById('capture-btn');
+const takeMoreBtn = document.getElementById('take-more-btn');
+const galleryState = document.getElementById('gallery-state');
+const cameraState = document.getElementById('camera-state');
+const galleryDiv = document.getElementById('gallery');
 
-  async function startCamera() {
-    showState('camera');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: {ideal:1280},
-          height: {ideal:720}
-        }
-      });
-      currentStream = stream;
-      video.srcObject = stream;
-      await video.play();
-    } catch (err) {
-      console.error('Camera error',err);
-      alert('Camera not available: ' + err.message);
-    }
-  }
-
-  function stopCamera() {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t=>t.stop());
-      currentStream = null;
-    }
-  }
-
-  function showState(state) {
-    if(state==='camera'){
-      cameraState.style.display='flex';
-      galleryState.style.display='none';
-    } else {
-      cameraState.style.display='none';
-      galleryState.style.display='flex';
-    }
-  }
-
-  function updateGallery() {
-    galleryDiv.innerHTML='';
-    capturedPhotos.forEach((photo,index)=>{
-      const wrapper=document.createElement('div');
-      wrapper.className='thumb-wrapper';
-      const img=document.createElement('img');
-      img.src=photo.dataUrl;
-      img.className='photo-thumb';
-      wrapper.appendChild(img);
-      const del=document.createElement('button');
-      del.className='delete-btn';
-      del.innerHTML='×';
-      del.onclick=()=>{
-        capturedPhotos.splice(index,1);
-        sendDataToJotForm();
-        updateGallery();
-      };
-      wrapper.appendChild(del);
-      galleryDiv.appendChild(wrapper);
+async function startCamera() {
+  showState('camera');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
     });
+    currentStream = stream;
+    video.srcObject = stream;
+    await video.play();
+  } catch(err) {
+    console.error('Camera error', err);
+    alert('Camera not available: ' + err.message);
   }
+}
 
-  function sendDataToJotForm() {
-    if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-      // send newline-separated file paths to form
-      const val = capturedPhotos.map(p=>p.filePath).join('\n');
-      JFCustomWidget.sendData({value:val,valid:true});
-    }
+function stopCamera() {
+  if(currentStream){
+    currentStream.getTracks().forEach(t=>t.stop());
+    currentStream=null;
   }
+}
 
-  function capturePhoto() {
-    if(!video.videoWidth) return;
-    const canvas=document.createElement('canvas');
-    canvas.width=video.videoWidth;
-    canvas.height=video.videoHeight;
-    const ctx=canvas.getContext('2d');
-    ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    const dataUrl=canvas.toDataURL('image/jpeg',0.9);
-    // Convert to blob
-    canvas.toBlob(blob=>{
-      uploadToJotform(blob,dataUrl);
-    },'image/jpeg',0.9);
-    stopCamera();
+function showState(state){
+  if(state==='camera'){
+    cameraState.style.display='flex';
+    galleryState.style.display='none';
+  } else {
+    cameraState.style.display='none';
+    galleryState.style.display='flex';
   }
+}
 
-  function uploadToJotform(blob,dataUrl) {
-    if(typeof JFCustomWidget==='undefined'){return;}
-    const fileName='photo_'+Date.now()+'.jpg';
-    JFCustomWidget.uploadFile(blob,fileName,function(response){
-      capturedPhotos.push({
-        dataUrl:dataUrl,
-        filePath:response.filePath
-      });
+function updateGallery(){
+  galleryDiv.innerHTML='';
+  capturedPhotos.forEach((photo,index)=>{
+    const wrapper=document.createElement('div');
+    wrapper.className='thumb-wrapper';
+    const img=document.createElement('img');
+    img.src=photo.dataUrl;
+    img.className='photo-thumb';
+    wrapper.appendChild(img);
+    const del=document.createElement('button');
+    del.className='delete-btn';
+    del.innerHTML='×';
+    del.onclick=()=>{
+      capturedPhotos.splice(index,1);
       sendDataToJotForm();
       updateGallery();
-      showState('gallery');
-    });
+    };
+    wrapper.appendChild(del);
+    galleryDiv.appendChild(wrapper);
+  });
+}
+
+function sendDataToJotForm(){
+  if(typeof JFCustomWidget!=='undefined' && JFCustomWidget.sendData){
+    // send newline-separated file paths to form
+    const val = capturedPhotos.map(p=>p.filePath).join('\n');
+    JFCustomWidget.sendData({value:val, valid:true});
   }
+}
 
-  // event listeners
-  captureBtn.addEventListener('click',capturePhoto);
-  takeMoreBtn.addEventListener('click',startCamera);
+async function capturePhoto(){
+  if(!video.videoWidth || !video.videoHeight){
+    // wait if video not ready
+    setTimeout(capturePhoto,100);
+    return;
+  }
+  const canvas=document.createElement('canvas');
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-  // Jotform widget init
-  if(typeof JFCustomWidget!=='undefined'){
-    JFCustomWidget.subscribe('ready',function(){
-      startCamera();
-      JFCustomWidget.sendData({value:'',valid:true});
+  canvas.toBlob(blob=>{
+    if(!blob){console.error('Failed to create blob'); return;}
+    const dataUrl = canvas.toDataURL('image/jpeg',0.9);
+    uploadToJotform(blob,dataUrl);
+  },'image/jpeg',0.9);
+
+  stopCamera();
+}
+
+function uploadToJotform(blob,dataUrl){
+  if(typeof JFCustomWidget==='undefined'){return;}
+  const fileName='photo_'+Date.now()+'.jpg';
+  JFCustomWidget.uploadFile(blob,fileName,function(response){
+    capturedPhotos.push({
+      dataUrl:dataUrl,
+      filePath:response.filePath
     });
-  } else {
-    // standalone test
+    sendDataToJotForm();
+    updateGallery();
+    showState('gallery');
+  });
+}
+
+// Event listeners
+captureBtn.addEventListener('click', capturePhoto);
+takeMoreBtn.addEventListener('click', startCamera);
+
+// JotForm widget init
+if(typeof JFCustomWidget!=='undefined'){
+  JFCustomWidget.subscribe('ready', function(){
     startCamera();
-  }
+    JFCustomWidget.sendData({value:'', valid:true});
+  });
+} else {
+  // standalone test
+  startCamera();
+}
 </script>
 </body>
 </html>
