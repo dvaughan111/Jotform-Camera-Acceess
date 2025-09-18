@@ -302,49 +302,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Settings Panel Styles */
-        .settings-panel {
-            display: none;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border: 1px solid #ddd;
-        }
-
-        .settings-group {
-            margin-bottom: 20px;
-        }
-
-        .settings-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .settings-input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .settings-checkbox {
-            margin-right: 8px;
-        }
-
-        .settings-section {
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .settings-section:last-child {
-            border-bottom: none;
-        }
-
         @media (max-width: 600px) {
             .state-container {
                 padding: 15px;
@@ -386,42 +343,6 @@
 </head>
 <body>
     <div id="camera-widget" class="widget-container">
-        <!-- Settings Panel (for JotForm form builder) -->
-        <div id="settings-panel" class="settings-panel">
-            <div class="settings-section">
-                <h3>Cloudinary Settings</h3>
-                <div class="settings-group">
-                    <label class="settings-label">Cloud Name</label>
-                    <input type="text" class="settings-input" id="cloudinary-cloud-name" placeholder="your-cloud-name">
-                </div>
-                <div class="settings-group">
-                    <label class="settings-label">Upload Preset</label>
-                    <input type="text" class="settings-input" id="cloudinary-upload-preset" placeholder="your-upload-preset">
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3>Camera Settings</h3>
-                <div class="settings-group">
-                    <label class="settings-label">Camera Facing Mode</label>
-                    <select class="settings-input" id="camera-facing">
-                        <option value="environment">Rear Camera</option>
-                        <option value="user">Front Camera</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3>Validation Settings</h3>
-                <div class="settings-group">
-                    <label>
-                        <input type="checkbox" class="settings-checkbox" id="required-field">
-                        Required Field
-                    </label>
-                </div>
-            </div>
-        </div>
-
         <div id="initial-state" class="state-container">
             <p>Click the button below to start your camera</p>
             <button id="start-btn" class="btn primary-btn">Take Photo</button>
@@ -465,17 +386,7 @@
     </div>
 
     <!-- Load JotForm Custom Widget API -->
-    <script>
-        // Load JotForm Custom Widget API asynchronously
-        (function() {
-            var po = document.createElement('script'); 
-            po.type = 'text/javascript'; 
-            po.async = true;
-            po.src = 'https://js.jotform.com/JotFormCustomWidget.min.js';
-            var s = document.getElementsByTagName('script')[0]; 
-            s.parentNode.insertBefore(po, s);
-        })();
-    </script>
+    <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
     
     <script>
         console.log('Camera Widget Loading...');
@@ -483,154 +394,8 @@
         let currentStream = null;
         let uploadedPhotos = [];
         let isSubmitting = false;
-        let widgetSettings = {
-            cloudinaryCloudName: 'your-cloud-name',
-            cloudinaryUploadPreset: 'your-upload-preset',
-            cameraFacing: 'environment',
-            isRequired: false
-        };
 
-        // JotForm Widget Integration
-        (function() {
-            function waitForJotForm() {
-                if (typeof JFCustomWidget !== 'undefined') {
-                    console.log('JotForm Custom Widget API available');
-                    
-                    // Load widget settings
-                    loadWidgetSettings();
-                    
-                    // Subscribe to ready event
-                    JFCustomWidget.subscribe('ready', function(data) {
-                        console.log('Widget ready with data:', data);
-                        initCameraWidget();
-                        
-                        // Send initial empty data
-                        JFCustomWidget.sendData({
-                            value: '',
-                            valid: !widgetSettings.isRequired
-                        });
-                    });
-                    
-                    // Submit event handler
-                    JFCustomWidget.subscribe('submit', function() {
-                        console.log('Form submit event received');
-                        
-                        if (isSubmitting) {
-                            console.log('Already submitting, please wait...');
-                            return;
-                        }
-                        
-                        isSubmitting = true;
-                        
-                        try {
-                            // Validate if required
-                            const isValid = !widgetSettings.isRequired || uploadedPhotos.length > 0;
-                            
-                            if (!isValid) {
-                                showStatus('Please upload at least 1 photo', 'error');
-                                JFCustomWidget.sendSubmit({
-                                    valid: false,
-                                    value: ''
-                                });
-                                return;
-                            }
-                            
-                            // Prepare data for PDF - use actual image URLs
-                            const imageUrls = uploadedPhotos.map(photo => photo.imageUrl || photo.dataUrl);
-                            const submissionData = {
-                                count: uploadedPhotos.length,
-                                images: imageUrls,
-                                summary: uploadedPhotos.length === 1 ? 
-                                    "1 photo captured" : 
-                                    `${uploadedPhotos.length} photos captured`
-                            };
-                            
-                            console.log('Submitting data for PDF:', submissionData);
-                            
-                            JFCustomWidget.sendSubmit({
-                                valid: true,
-                                value: JSON.stringify(submissionData)
-                            });
-                            
-                        } catch (error) {
-                            console.error('Error during submission:', error);
-                            JFCustomWidget.sendSubmit({
-                                valid: false,
-                                value: 'error',
-                                message: error.message
-                            });
-                        } finally {
-                            isSubmitting = false;
-                        }
-                    });
-                    
-                    // Handle populate requests
-                    JFCustomWidget.subscribe('populate', function(data) {
-                        console.log('Populate event received:', data);
-                        
-                        if (data && data.value) {
-                            try {
-                                const parsedData = JSON.parse(data.value);
-                                if (parsedData.images) {
-                                    // Restore uploaded photos from saved data
-                                    uploadedPhotos = parsedData.images.map(url => ({
-                                        dataUrl: url,
-                                        imageUrl: url,
-                                        timestamp: Date.now()
-                                    }));
-                                    updateGallery();
-                                }
-                            } catch (e) {
-                                console.log('Could not parse existing data, treating as text');
-                            }
-                        }
-                        
-                        return {
-                            value: uploadedPhotos.length > 0 ? 
-                                JSON.stringify({
-                                    count: uploadedPhotos.length,
-                                    images: uploadedPhotos.map(photo => photo.imageUrl || photo.dataUrl),
-                                    summary: `${uploadedPhotos.length} photos captured`
-                                }) : '',
-                            valid: !widgetSettings.isRequired || uploadedPhotos.length > 0
-                        };
-                    });
-                    
-                    // Handle settings panel (for form builder)
-                    JFCustomWidget.subscribe('settings', function() {
-                        console.log('Settings panel requested');
-                        document.getElementById('settings-panel').style.display = 'block';
-                    });
-                    
-                } else {
-                    setTimeout(waitForJotForm, 50);
-                }
-            }
-            
-            function loadWidgetSettings() {
-                try {
-                    // Try to get settings from JotForm
-                    const cloudName = JFCustomWidget.getWidgetSetting('cloudinaryCloudName');
-                    const uploadPreset = JFCustomWidget.getWidgetSetting('cloudinaryUploadPreset');
-                    const facingMode = JFCustomWidget.getWidgetSetting('cameraFacing');
-                    const required = JFCustomWidget.getWidgetSetting('required');
-                    
-                    if (cloudName) widgetSettings.cloudinaryCloudName = cloudName;
-                    if (uploadPreset) widgetSettings.cloudinaryUploadPreset = uploadPreset;
-                    if (facingMode) widgetSettings.cameraFacing = facingMode;
-                    if (required) widgetSettings.isRequired = required === 'true';
-                    
-                    console.log('Loaded widget settings:', widgetSettings);
-                    
-                } catch (error) {
-                    console.log('Could not load widget settings, using defaults');
-                }
-            }
-            
-            // Start waiting for JotForm API
-            waitForJotForm();
-        })();
-
+        // Initialize the widget
         function initCameraWidget() {
             console.log('Initializing camera widget...');
             
@@ -646,38 +411,65 @@
             console.log('Camera widget initialized successfully');
         }
 
-        async function uploadToCloudinary(dataUrl) {
-            try {
-                showStatus('Uploading image...', 'success');
+        // JotForm Widget Integration - SIMPLIFIED
+        function setupJotFormIntegration() {
+            if (typeof JFCustomWidget !== 'undefined') {
+                console.log('JotForm Custom Widget API available');
                 
-                const formData = new FormData();
-                const blob = await fetch(dataUrl).then(r => r.blob());
-                formData.append('file', blob);
-                formData.append('upload_preset', widgetSettings.cloudinaryUploadPreset);
+                // Subscribe to ready event
+                JFCustomWidget.subscribe('ready', function(data) {
+                    console.log('Widget ready with data:', data);
+                    
+                    // Send initial empty data
+                    JFCustomWidget.sendData({
+                        value: '',
+                        valid: true
+                    });
+                });
                 
-                const response = await fetch(
-                    `https://api.cloudinary.com/v1_1/${widgetSettings.cloudinaryCloudName}/image/upload`,
-                    {
-                        method: 'POST',
-                        body: formData
+                // Submit event handler
+                JFCustomWidget.subscribe('submit', function() {
+                    console.log('Form submit event received');
+                    
+                    if (isSubmitting) {
+                        return;
                     }
-                );
+                    
+                    isSubmitting = true;
+                    
+                    try {
+                        // Prepare submission data
+                        const submissionData = {
+                            count: uploadedPhotos.length,
+                            images: uploadedPhotos.map(photo => photo.dataUrl),
+                            summary: uploadedPhotos.length === 1 ? 
+                                "1 photo captured" : 
+                                `${uploadedPhotos.length} photos captured`
+                        };
+                        
+                        JFCustomWidget.sendSubmit({
+                            valid: true,
+                            value: JSON.stringify(submissionData)
+                        });
+                        
+                    } catch (error) {
+                        console.error('Error during submission:', error);
+                        JFCustomWidget.sendSubmit({
+                            valid: false,
+                            value: 'error'
+                        });
+                    } finally {
+                        isSubmitting = false;
+                    }
+                });
                 
-                if (!response.ok) {
-                    throw new Error('Cloudinary upload failed');
-                }
-                
-                const data = await response.json();
-                return data.secure_url;
-                
-            } catch (error) {
-                console.error('Cloudinary upload error:', error);
-                showStatus('Upload failed, using local image', 'error');
-                return dataUrl; // Fallback to data URL
+            } else {
+                console.log('JotForm API not available, running in standalone mode');
             }
         }
 
         function showState(state) {
+            console.log('Showing state:', state);
             const states = ['initial', 'camera', 'preview', 'gallery'];
             states.forEach(s => {
                 const el = document.getElementById(s + '-state');
@@ -691,27 +483,6 @@
             
             if (state === 'gallery') {
                 updateGallery();
-            }
-            
-            updateHeight(state);
-        }
-
-        function updateHeight(state) {
-            const heights = { 
-                initial: 150, 
-                camera: 400, 
-                preview: 400, 
-                gallery: 300 + (uploadedPhotos.length * 180)
-            };
-            
-            try {
-                if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.requestFrameResize) {
-                    JFCustomWidget.requestFrameResize({
-                        height: heights[state] || 150
-                    });
-                }
-            } catch (e) {
-                console.log('Height error:', e);
             }
         }
 
@@ -727,20 +498,26 @@
         }
 
         async function startCamera() {
+            console.log('Starting camera...');
             try {
                 showState('camera');
                 
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: widgetSettings.cameraFacing }
+                    video: { facingMode: 'environment' }
                 });
                 
                 currentStream = stream;
                 const video = document.getElementById('video');
                 video.srcObject = stream;
                 
-                video.play().catch(console.error);
+                video.play().catch(error => {
+                    console.error('Video play error:', error);
+                    showStatus('Camera error: ' + error.message, 'error');
+                    showState('initial');
+                });
                 
             } catch (error) {
+                console.error('Camera access error:', error);
                 showStatus('Camera access denied or unavailable', 'error');
                 showState('initial');
             }
@@ -754,6 +531,7 @@
         }
 
         function capturePhoto() {
+            console.log('Capturing photo...');
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             
@@ -766,6 +544,9 @@
                 
                 stopCamera();
                 showState('preview');
+            } else {
+                console.error('Video or canvas not ready');
+                showStatus('Camera not ready', 'error');
             }
         }
 
@@ -779,37 +560,18 @@
             startCamera();
         }
 
-        async function approvePhoto() {
+        function approvePhoto() {
             const canvas = document.getElementById('canvas');
             const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
             
-            // Show loading state
-            const approveBtn = document.getElementById('approve-btn');
-            const originalText = approveBtn.innerHTML;
-            approveBtn.innerHTML = '<span class="loading"></span> Uploading...';
-            approveBtn.disabled = true;
+            uploadedPhotos.push({
+                dataUrl: dataUrl,
+                timestamp: Date.now()
+            });
             
-            try {
-                // Upload to Cloudinary for PDF compatibility
-                const imageUrl = await uploadToCloudinary(dataUrl);
-                
-                uploadedPhotos.push({
-                    dataUrl: dataUrl,
-                    imageUrl: imageUrl,
-                    timestamp: Date.now()
-                });
-                
-                console.log('Photo added with URL:', imageUrl);
-                sendDataToJotForm();
-                showState('gallery');
-                
-            } catch (error) {
-                console.error('Error uploading photo:', error);
-                showStatus('Error uploading photo', 'error');
-            } finally {
-                approveBtn.innerHTML = originalText;
-                approveBtn.disabled = false;
-            }
+            console.log('Photo added, total:', uploadedPhotos.length);
+            sendDataToJotForm();
+            showState('gallery');
         }
 
         function updateGallery() {
@@ -828,7 +590,7 @@
                     photoItem.className = 'photo-item';
                     
                     const img = document.createElement('img');
-                    img.src = photo.dataUrl; // Use dataUrl for thumbnail
+                    img.src = photo.dataUrl;
                     img.className = 'photo-thumbnail';
                     img.alt = `Uploaded photo ${index + 1}`;
                     
@@ -885,12 +647,6 @@
         }
 
         function finish() {
-            // Validate if required
-            if (widgetSettings.isRequired && uploadedPhotos.length === 0) {
-                showStatus('Please upload at least 1 photo', 'error');
-                return;
-            }
-            
             showStatus('Upload completed successfully!', 'success');
             sendDataToJotForm();
         }
@@ -898,23 +654,20 @@
         function sendDataToJotForm() {
             try {
                 if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-                    const imageUrls = uploadedPhotos.map(photo => photo.imageUrl || photo.dataUrl);
                     const submissionData = {
                         count: uploadedPhotos.length,
-                        images: imageUrls,
+                        images: uploadedPhotos.map(photo => photo.dataUrl),
                         summary: uploadedPhotos.length === 1 ? 
                             "1 photo captured" : 
                             `${uploadedPhotos.length} photos captured`
                     };
                     
-                    const isValid = !widgetSettings.isRequired || uploadedPhotos.length > 0;
-                    
                     JFCustomWidget.sendData({
                         value: JSON.stringify(submissionData),
-                        valid: isValid
+                        valid: true
                     });
                     
-                    console.log('Data sent to JotForm:', submissionData);
+                    console.log('Data sent to JotForm');
                 }
             } catch (e) {
                 console.error('Error sending data to JotForm:', e);
@@ -925,11 +678,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM content loaded');
             
-            // Fallback: if JotForm widget API is not available after 2 seconds, initialize directly
+            // Initialize camera widget first (immediately)
+            initCameraWidget();
+            
+            // Setup JotForm integration (will work if API is available)
+            setTimeout(setupJotFormIntegration, 100);
+            
+            // Fallback: if JotForm widget API is not available, we can still work
             setTimeout(function() {
                 if (typeof JFCustomWidget === 'undefined') {
-                    console.log('JotForm not detected, initializing directly');
-                    initCameraWidget();
+                    console.log('JotForm not detected, running in standalone mode');
                 }
             }, 2000);
         });
