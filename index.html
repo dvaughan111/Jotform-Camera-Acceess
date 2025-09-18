@@ -364,7 +364,12 @@
                 <img id="preview-image" style="max-width: 100%; max-height: 100%; object-fit: contain;">
             </div>
             <div class="preview-actions">
-                <button id="approve-btn" class="btn success-btn">Approve</button>
+                <button id="approve-btn" class="btn success-btn">
+                    <span id="approve-text">Approve</span>
+                    <span id="approve-loading" style="display:none;">
+                        <span class="loading"></span> Uploading...
+                    </span>
+                </button>
                 <button id="retake-btn" class="btn secondary-btn">Retake</button>
             </div>
         </div>
@@ -392,6 +397,10 @@
     <script>
         console.log('Camera Widget Loading...');
 
+        // Cloudinary configuration - USING YOUR CREDENTIALS
+        const CLOUDINARY_CLOUD_NAME = 'du0puu5mt';
+        const CLOUDINARY_UPLOAD_PRESET = 'jotform_widget_upload';
+
         let currentStream = null;
         let uploadedPhotos = [];
         let isSubmitting = false;
@@ -411,6 +420,43 @@
             document.getElementById('done-btn').addEventListener('click', finish);
             
             console.log('Camera widget initialized successfully');
+        }
+
+        // Cloudinary upload function
+        async function uploadToCloudinary(dataUrl) {
+            try {
+                console.log('Uploading to Cloudinary...');
+                
+                // Convert data URL to blob
+                const response = await fetch(dataUrl);
+                const blob = await response.blob();
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('file', blob);
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                
+                // Upload to Cloudinary
+                const uploadResponse = await fetch(
+                    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+                    {
+                        method: 'POST',
+                        body: formData
+                    }
+                );
+                
+                if (!uploadResponse.ok) {
+                    throw new Error(`Cloudinary upload failed: ${uploadResponse.status}`);
+                }
+                
+                const data = await uploadResponse.json();
+                console.log('Cloudinary upload successful:', data.secure_url);
+                return data.secure_url;
+                
+            } catch (error) {
+                console.error('Cloudinary upload error:', error);
+                throw new Error('Failed to upload image to Cloudinary');
+            }
         }
 
         // JotForm Widget Integration
@@ -440,21 +486,32 @@
                     isSubmitting = true;
                     
                     try {
-                        // Create a simple text summary that includes image references
-                        let imageReferences = '';
+                        // Create HTML content with Cloudinary image URLs for PDF
+                        let pdfContent = `<div style="font-family: Arial, sans-serif; padding: 20px;">`;
+                        pdfContent += `<h2 style="color: #333; margin-bottom: 20px;">Uploaded Photos (${uploadedPhotos.length})</h2>`;
+                        
                         if (uploadedPhotos.length > 0) {
-                            imageReferences = uploadedPhotos.map((photo, index) => 
-                                `[Image ${index + 1}]`
-                            ).join(', ');
+                            pdfContent += `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">`;
+                            uploadedPhotos.forEach((photo, index) => {
+                                // Use Cloudinary URL for PDF, fallback to data URL
+                                const imageUrl = photo.cloudinaryUrl || photo.dataUrl;
+                                pdfContent += `
+                                    <div style="border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
+                                        <img src="${imageUrl}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px;">
+                                        <p style="text-align: center; margin-top: 10px; color: #666;">Photo ${index + 1}</p>
+                                    </div>
+                                `;
+                            });
+                            pdfContent += `</div>`;
+                        } else {
+                            pdfContent += `<p style="color: #666; font-style: italic;">No photos uploaded</p>`;
                         }
                         
-                        const submissionText = uploadedPhotos.length === 1 ? 
-                            `1 photo captured ${imageReferences}` : 
-                            `${uploadedPhotos.length} photos captured ${imageReferences}`;
+                        pdfContent += `</div>`;
                         
                         JFCustomWidget.sendSubmit({
                             valid: true,
-                            value: submissionText
+                            value: pdfContent
                         });
                         
                     } catch (error) {
@@ -502,6 +559,22 @@
             }
         }
 
+        function showLoading(show) {
+            const approveText = document.getElementById('approve-text');
+            const approveLoading = document.getElementById('approve-loading');
+            const approveBtn = document.getElementById('approve-btn');
+            
+            if (show) {
+                approveText.style.display = 'none';
+                approveLoading.style.display = 'inline';
+                approveBtn.disabled = true;
+            } else {
+                approveText.style.display = 'inline';
+                approveLoading.style.display = 'none';
+                approveBtn.disabled = false;
+            }
+        }
+
         async function startCamera() {
             console.log('Starting camera...');
             try {
@@ -518,13 +591,6 @@
                 currentStream = stream;
                 const video = document.getElementById('video');
                 video.srcObject = stream;
-                
-                // Set video dimensions to match container
-                video.addEventListener('loadedmetadata', function() {
-                    video.style.width = '100%';
-                    video.style.height = '100%';
-                    video.style.objectFit = 'cover';
-                });
                 
                 video.play().catch(error => {
                     console.error('Video play error:', error);
@@ -587,21 +653,45 @@
             startCamera();
         }
 
-        function approvePhoto() {
+        async function approvePhoto() {
             if (!currentPhotoDataUrl) {
                 showStatus('No photo to approve', 'error');
                 return;
             }
             
-            uploadedPhotos.push({
-                dataUrl: currentPhotoDataUrl,
-                timestamp: Date.now()
-            });
+            showLoading(true);
             
-            console.log('Photo added, total:', uploadedPhotos.length);
-            sendDataToJotForm();
-            showState('gallery');
-            currentPhotoDataUrl = '';
+            try {
+                // Upload to Cloudinary first
+                const cloudinaryUrl = await uploadToCloudinary(currentPhotoDataUrl);
+                
+                uploadedPhotos.push({
+                    dataUrl: currentPhotoDataUrl,
+                    cloudinaryUrl: cloudinaryUrl,
+                    timestamp: Date.now()
+                });
+                
+                console.log('Photo uploaded to Cloudinary:', cloudinaryUrl);
+                sendDataToJotForm();
+                showState('gallery');
+                showStatus('Photo uploaded successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Error uploading photo:', error);
+                showStatus('Upload failed: ' + error.message, 'error');
+                
+                // Fallback: store without Cloudinary URL
+                uploadedPhotos.push({
+                    dataUrl: currentPhotoDataUrl,
+                    timestamp: Date.now()
+                });
+                
+                sendDataToJotForm();
+                showState('gallery');
+            } finally {
+                showLoading(false);
+                currentPhotoDataUrl = '';
+            }
         }
 
         function updateGallery() {
@@ -620,6 +710,7 @@
                     photoItem.className = 'photo-item';
                     
                     const img = document.createElement('img');
+                    // Use dataUrl for thumbnail (faster loading)
                     img.src = photo.dataUrl;
                     img.className = 'photo-thumbnail';
                     img.alt = `Uploaded photo ${index + 1}`;
