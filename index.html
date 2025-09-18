@@ -1,106 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera Widget</title>
 <style>
-  #camera {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  body {
+    font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:#f8f9fa;
+    padding:10px;
   }
-
+  .widget-container {
+    width:100%;
+    max-width:500px;
+    margin:0 auto;
+    background:#fff;
+    border-radius:12px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.1);
+    overflow:hidden;
+  }
+  .state-container {
+    padding:15px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+  .btn {
+    padding:14px 28px;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+    font-weight:600;
+    transition:all .2s ease;
+    margin:8px;
+    white-space:nowrap;
+    background:#007bff;
+  }
+  .btn:hover {
+    background:#0056b3;
+    transform:translateY(-2px);
+  }
+  .video-container,.photo-container {
+    width:100%;
+    height:300px;
+    background:#000;
+    border-radius:8px;
+    overflow:hidden;
+    position:relative;
+    margin-bottom:15px;
+  }
   #video {
-    width: 100%;
-    max-width: 400px;
-    border: 2px solid #ccc;
-    border-radius: 8px;
-    margin-bottom: 10px;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transform:scaleX(-1); /* mirror front camera feel */
   }
-
-  #capture {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    background-color: #4CAF50;
-    color: #fff;
-    font-size: 14px;
-    cursor: pointer;
-    margin-bottom: 20px;
+  .photo-thumb {
+    width:100%;
+    height:300px;
+    object-fit:cover;
+    border-radius:8px;
   }
-
-  #gallery {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+  .thumb-wrapper {
+    position:relative;
+    width:100%;
+    margin-bottom:15px;
   }
-
-  #gallery img {
-    width: 100px;
-    height: auto;
-    margin: 5px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+  .delete-btn {
+    position:absolute;
+    top:8px;
+    right:8px;
+    background:#dc3545;
+    color:white;
+    border:none;
+    border-radius:50%;
+    width:32px;
+    height:32px;
+    font-size:18px;
+    cursor:pointer;
+    font-weight:bold;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+    z-index:10;
+  }
+  .delete-btn:hover {
+    background:#c82333;
+  }
+  .gallery {
+    display:flex;
+    flex-direction:column;
+    width:100%;
   }
 </style>
+</head>
+<body>
+<div id="camera-widget" class="widget-container">
+  <div id="camera-state" class="state-container">
+    <div class="video-container">
+      <video id="video" playsinline autoplay muted></video>
+    </div>
+    <button id="capture-btn" class="btn">Capture</button>
+  </div>
 
-<div id="camera">
-  <video id="video" autoplay></video>
-  <button id="capture">Capture Photo</button>
+  <div id="gallery-state" class="state-container" style="display:none;">
+    <div id="gallery" class="gallery"></div>
+    <button id="take-more-btn" class="btn">Take More Pictures</button>
+  </div>
 </div>
 
-<div id="gallery"></div>
-
+<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 <script>
-  let video = document.getElementById('video');
-  let captureBtn = document.getElementById('capture');
-  let gallery = document.getElementById('gallery');
+  let currentStream = null;
   let capturedPhotos = [];
 
-  // Start camera
-  navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-    video.srcObject = stream;
-  }).catch(err => {
-    console.error('Could not access camera:', err);
-  });
+  const video = document.getElementById('video');
+  const captureBtn = document.getElementById('capture-btn');
+  const takeMoreBtn = document.getElementById('take-more-btn');
+  const galleryState = document.getElementById('gallery-state');
+  const cameraState = document.getElementById('camera-state');
+  const galleryDiv = document.getElementById('gallery');
 
-  // Capture button
-  captureBtn.addEventListener('click', capturePhoto);
-
-  function capturePhoto() {
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(blob => {
-      // Display preview thumbnail in gallery
-      const imgURL = URL.createObjectURL(blob);
-      const img = document.createElement('img');
-      img.src = imgURL;
-      gallery.appendChild(img);
-
-      // Upload to Jotform as a real file
-      uploadToJotform(blob);
-    }, 'image/jpeg', 0.95);
+  async function startCamera() {
+    showState('camera');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: {ideal:1280},
+          height: {ideal:720}
+        }
+      });
+      currentStream = stream;
+      video.srcObject = stream;
+      await video.play();
+    } catch (err) {
+      console.error('Camera error',err);
+      alert('Camera not available: ' + err.message);
+    }
   }
 
-  function uploadToJotform(blob) {
-    if (typeof JFCustomWidget === 'undefined') {
-      console.error('JFCustomWidget not available.');
-      return;
+  function stopCamera() {
+    if (currentStream) {
+      currentStream.getTracks().forEach(t=>t.stop());
+      currentStream = null;
     }
+  }
 
-    const fileName = 'photo_' + Date.now() + '.jpg';
+  function showState(state) {
+    if(state==='camera'){
+      cameraState.style.display='flex';
+      galleryState.style.display='none';
+    } else {
+      cameraState.style.display='none';
+      galleryState.style.display='flex';
+    }
+  }
 
-    // Upload to Jotform
-    JFCustomWidget.uploadFile(blob, fileName, function(response) {
-      console.log('File uploaded to Jotform:', response);
-
-      // Keep track of all uploaded file URLs
-      capturedPhotos.push(response.filePath);
-
-      // Send all file URLs back to Jotform widget value
-      JFCustomWidget.sendData({
-        value: capturedPhotos.join('\n'),
-        valid: true
-      });
+  function updateGallery() {
+    galleryDiv.innerHTML='';
+    capturedPhotos.forEach((photo,index)=>{
+      const wrapper=document.createElement('div');
+      wrapper.className='thumb-wrapper';
+      const img=document.createElement('img');
+      img.src=photo.dataUrl;
+      img.className='photo-thumb';
+      wrapper.appendChild(img);
+      const del=document.createElement('button');
+      del.className='delete-btn';
+      del.innerHTML='×';
+      del.onclick=()=>{
+        capturedPhotos.splice(index,1);
+        sendDataToJotForm();
+        updateGallery();
+      };
+      wrapper.appendChild(del);
+      galleryDiv.appendChild(wrapper);
     });
   }
+
+  function sendDataToJotForm() {
+    if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
+      // send newline-separated file paths to form
+      const val = capturedPhotos.map(p=>p.filePath).join('\n');
+      JFCustomWidget.sendData({value:val,valid:true});
+    }
+  }
+
+  function capturePhoto() {
+    if(!video.videoWidth) return;
+    const canvas=document.createElement('canvas');
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const dataUrl=canvas.toDataURL('image/jpeg',0.9);
+    // Convert to blob
+    canvas.toBlob(blob=>{
+      uploadToJotform(blob,dataUrl);
+    },'image/jpeg',0.9);
+    stopCamera();
+  }
+
+  function uploadToJotform(blob,dataUrl) {
+    if(typeof JFCustomWidget==='undefined'){return;}
+    const fileName='photo_'+Date.now()+'.jpg';
+    JFCustomWidget.uploadFile(blob,fileName,function(response){
+      capturedPhotos.push({
+        dataUrl:dataUrl,
+        filePath:response.filePath
+      });
+      sendDataToJotForm();
+      updateGallery();
+      showState('gallery');
+    });
+  }
+
+  // event listeners
+  captureBtn.addEventListener('click',capturePhoto);
+  takeMoreBtn.addEventListener('click',startCamera);
+
+  // Jotform widget init
+  if(typeof JFCustomWidget!=='undefined'){
+    JFCustomWidget.subscribe('ready',function(){
+      startCamera();
+      JFCustomWidget.sendData({value:'',valid:true});
+    });
+  } else {
+    // standalone test
+    startCamera();
+  }
 </script>
+</body>
+</html>
