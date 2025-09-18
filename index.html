@@ -107,9 +107,9 @@
             border: 2px dashed #dee2e6;
         }
 
-        #canvas {
-            width: 100%;
-            height: 100%;
+        #preview-image {
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
             border-radius: 6px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -440,30 +440,21 @@
                     isSubmitting = true;
                     
                     try {
-                        // Create HTML content for PDF with actual images
-                        let pdfContent = `<div style="font-family: Arial, sans-serif; padding: 20px;">`;
-                        pdfContent += `<h2 style="color: #333; margin-bottom: 20px;">Uploaded Photos (${uploadedPhotos.length})</h2>`;
-                        
+                        // Create a simple text summary that includes image references
+                        let imageReferences = '';
                         if (uploadedPhotos.length > 0) {
-                            pdfContent += `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">`;
-                            uploadedPhotos.forEach((photo, index) => {
-                                pdfContent += `
-                                    <div style="border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
-                                        <img src="${photo.dataUrl}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px;">
-                                        <p style="text-align: center; margin-top: 10px; color: #666;">Photo ${index + 1}</p>
-                                    </div>
-                                `;
-                            });
-                            pdfContent += `</div>`;
-                        } else {
-                            pdfContent += `<p style="color: #666; font-style: italic;">No photos uploaded</p>`;
+                            imageReferences = uploadedPhotos.map((photo, index) => 
+                                `[Image ${index + 1}]`
+                            ).join(', ');
                         }
                         
-                        pdfContent += `</div>`;
+                        const submissionText = uploadedPhotos.length === 1 ? 
+                            `1 photo captured ${imageReferences}` : 
+                            `${uploadedPhotos.length} photos captured ${imageReferences}`;
                         
                         JFCustomWidget.sendSubmit({
                             valid: true,
-                            value: pdfContent // Send HTML that PDF can render
+                            value: submissionText
                         });
                         
                     } catch (error) {
