@@ -108,8 +108,9 @@
         }
 
         #canvas {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
             border-radius: 6px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
@@ -360,7 +361,7 @@
         
         <div id="preview-state" class="state-container" style="display: none;">
             <div class="preview-container">
-                <canvas id="canvas"></canvas>
+                <img id="preview-image" style="max-width: 100%; max-height: 100%; object-fit: contain;">
             </div>
             <div class="preview-actions">
                 <button id="approve-btn" class="btn success-btn">Approve</button>
@@ -394,6 +395,7 @@
         let currentStream = null;
         let uploadedPhotos = [];
         let isSubmitting = false;
+        let currentPhotoDataUrl = '';
 
         // Initialize the widget
         function initCameraWidget() {
@@ -411,7 +413,7 @@
             console.log('Camera widget initialized successfully');
         }
 
-        // JotForm Widget Integration - SIMPLIFIED
+        // JotForm Widget Integration
         function setupJotFormIntegration() {
             if (typeof JFCustomWidget !== 'undefined') {
                 console.log('JotForm Custom Widget API available');
@@ -438,18 +440,30 @@
                     isSubmitting = true;
                     
                     try {
-                        // Prepare submission data
-                        const submissionData = {
-                            count: uploadedPhotos.length,
-                            images: uploadedPhotos.map(photo => photo.dataUrl),
-                            summary: uploadedPhotos.length === 1 ? 
-                                "1 photo captured" : 
-                                `${uploadedPhotos.length} photos captured`
-                        };
+                        // Create HTML content for PDF with actual images
+                        let pdfContent = `<div style="font-family: Arial, sans-serif; padding: 20px;">`;
+                        pdfContent += `<h2 style="color: #333; margin-bottom: 20px;">Uploaded Photos (${uploadedPhotos.length})</h2>`;
+                        
+                        if (uploadedPhotos.length > 0) {
+                            pdfContent += `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">`;
+                            uploadedPhotos.forEach((photo, index) => {
+                                pdfContent += `
+                                    <div style="border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
+                                        <img src="${photo.dataUrl}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px;">
+                                        <p style="text-align: center; margin-top: 10px; color: #666;">Photo ${index + 1}</p>
+                                    </div>
+                                `;
+                            });
+                            pdfContent += `</div>`;
+                        } else {
+                            pdfContent += `<p style="color: #666; font-style: italic;">No photos uploaded</p>`;
+                        }
+                        
+                        pdfContent += `</div>`;
                         
                         JFCustomWidget.sendSubmit({
                             valid: true,
-                            value: JSON.stringify(submissionData)
+                            value: pdfContent // Send HTML that PDF can render
                         });
                         
                     } catch (error) {
@@ -503,12 +517,23 @@
                 showState('camera');
                 
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
                 });
                 
                 currentStream = stream;
                 const video = document.getElementById('video');
                 video.srcObject = stream;
+                
+                // Set video dimensions to match container
+                video.addEventListener('loadedmetadata', function() {
+                    video.style.width = '100%';
+                    video.style.height = '100%';
+                    video.style.objectFit = 'cover';
+                });
                 
                 video.play().catch(error => {
                     console.error('Video play error:', error);
@@ -533,19 +558,30 @@
         function capturePhoto() {
             console.log('Capturing photo...');
             const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
+            const previewImage = document.getElementById('preview-image');
             
-            if (video && canvas && video.videoWidth > 0) {
+            if (video && video.videoWidth > 0) {
+                // Create a canvas to capture the exact video frame
+                const canvas = document.createElement('canvas');
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 
                 const context = canvas.getContext('2d');
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
+                // Convert to data URL
+                currentPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                
+                // Display the captured image in preview
+                previewImage.src = currentPhotoDataUrl;
+                previewImage.style.width = '100%';
+                previewImage.style.height = '100%';
+                previewImage.style.objectFit = 'contain';
+                
                 stopCamera();
                 showState('preview');
             } else {
-                console.error('Video or canvas not ready');
+                console.error('Video not ready');
                 showStatus('Camera not ready', 'error');
             }
         }
@@ -561,17 +597,20 @@
         }
 
         function approvePhoto() {
-            const canvas = document.getElementById('canvas');
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            if (!currentPhotoDataUrl) {
+                showStatus('No photo to approve', 'error');
+                return;
+            }
             
             uploadedPhotos.push({
-                dataUrl: dataUrl,
+                dataUrl: currentPhotoDataUrl,
                 timestamp: Date.now()
             });
             
             console.log('Photo added, total:', uploadedPhotos.length);
             sendDataToJotForm();
             showState('gallery');
+            currentPhotoDataUrl = '';
         }
 
         function updateGallery() {
@@ -593,6 +632,7 @@
                     img.src = photo.dataUrl;
                     img.className = 'photo-thumbnail';
                     img.alt = `Uploaded photo ${index + 1}`;
+                    img.style.objectFit = 'cover';
                     
                     img.addEventListener('click', () => viewPhoto(photo.dataUrl));
                     
@@ -654,20 +694,17 @@
         function sendDataToJotForm() {
             try {
                 if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-                    const submissionData = {
-                        count: uploadedPhotos.length,
-                        images: uploadedPhotos.map(photo => photo.dataUrl),
-                        summary: uploadedPhotos.length === 1 ? 
-                            "1 photo captured" : 
-                            `${uploadedPhotos.length} photos captured`
-                    };
+                    // Create simple text summary for form field
+                    const summary = uploadedPhotos.length === 1 ? 
+                        "1 photo captured" : 
+                        `${uploadedPhotos.length} photos captured`;
                     
                     JFCustomWidget.sendData({
-                        value: JSON.stringify(submissionData),
+                        value: summary,
                         valid: true
                     });
                     
-                    console.log('Data sent to JotForm');
+                    console.log('Data sent to JotForm:', summary);
                 }
             } catch (e) {
                 console.error('Error sending data to JotForm:', e);
@@ -681,15 +718,8 @@
             // Initialize camera widget first (immediately)
             initCameraWidget();
             
-            // Setup JotForm integration (will work if API is available)
+            // Setup JotForm integration
             setTimeout(setupJotFormIntegration, 100);
-            
-            // Fallback: if JotForm widget API is not available, we can still work
-            setTimeout(function() {
-                if (typeof JFCustomWidget === 'undefined') {
-                    console.log('JotForm not detected, running in standalone mode');
-                }
-            }, 2000);
         });
     </script>
 </body>
