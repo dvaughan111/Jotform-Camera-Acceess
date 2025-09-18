@@ -1,253 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JotForm Camera Widget</title>
 <style>
-/* === styles omitted for brevity; keep all your CSS exactly as before === */
+  #camera {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #video {
+    width: 100%;
+    max-width: 400px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
+  #capture {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #4CAF50;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+
+  #gallery {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  #gallery img {
+    width: 100px;
+    height: auto;
+    margin: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
 </style>
-</head>
-<body>
-    <div id="camera-widget" class="widget-container">
-        <div id="initial-state" class="state-container">
-            <p>Click the button below to start your camera</p>
-            <button id="start-btn" class="btn primary-btn">Take Photo</button>
-        </div>
 
-        <div id="camera-state" class="state-container" style="display:none;">
-            <div class="video-container">
-                <video id="video" playsinline autoplay muted></video>
-            </div>
-            <div class="button-row">
-                <button id="capture-btn" class="btn primary-btn">Capture</button>
-                <button id="cancel-btn" class="btn secondary-btn">Cancel</button>
-            </div>
-        </div>
+<div id="camera">
+  <video id="video" autoplay></video>
+  <button id="capture">Capture Photo</button>
+</div>
 
-        <div id="preview-state" class="state-container" style="display:none;">
-            <div class="preview-container">
-                <img id="preview-image" style="max-width:100%;max-height:100%;object-fit:contain;">
-            </div>
-            <div class="preview-actions">
-                <button id="approve-btn" class="btn success-btn">
-                    <span id="approve-text">Approve</span>
-                    <span id="approve-loading" style="display:none;">
-                        <span class="loading"></span> Uploading...
-                    </span>
-                </button>
-                <button id="retake-btn" class="btn secondary-btn">Retake</button>
-            </div>
-        </div>
+<div id="gallery"></div>
 
-        <div id="gallery-state" class="state-container" style="display:none;">
-            <p class="success-message">Photo added!</p>
-            <div class="photo-gallery">
-                <h3 class="gallery-title">Uploaded Photos</h3>
-                <div id="photos-list" class="uploaded-photos-list"></div>
-            </div>
-            <div class="actions-container">
-                <button id="add-more-btn" class="btn primary-btn">Add More</button>
-                <button id="done-btn" class="btn success-btn">Complete Upload</button>
-            </div>
-        </div>
-        <div id="status-area"></div>
-    </div>
-
-<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 <script>
-const CLOUDINARY_CLOUD_NAME = 'du0puu5mt';
-const CLOUDINARY_UPLOAD_PRESET = 'jotform_widget_upload';
+  let video = document.getElementById('video');
+  let captureBtn = document.getElementById('capture');
+  let gallery = document.getElementById('gallery');
+  let capturedPhotos = [];
 
-let currentStream = null;
-let uploadedPhotos = [];
-let isSubmitting = false;
-let currentPhotoDataUrl = '';
+  // Start camera
+  navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+    video.srcObject = stream;
+  }).catch(err => {
+    console.error('Could not access camera:', err);
+  });
 
-function initCameraWidget() {
-    document.getElementById('start-btn').addEventListener('click', startCamera);
-    document.getElementById('capture-btn').addEventListener('click', capturePhoto);
-    document.getElementById('cancel-btn').addEventListener('click', cancelCamera);
-    document.getElementById('approve-btn').addEventListener('click', approvePhoto);
-    document.getElementById('retake-btn').addEventListener('click', retakePhoto);
-    document.getElementById('add-more-btn').addEventListener('click', addMorePhotos);
-    document.getElementById('done-btn').addEventListener('click', finish);
-}
+  // Capture button
+  captureBtn.addEventListener('click', capturePhoto);
 
-async function uploadToCloudinary(dataUrl) {
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-    const formData = new FormData();
-    formData.append('file', blob);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  function capturePhoto() {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: 'POST', body: formData }
-    );
-    if (!uploadResponse.ok) throw new Error(`Cloudinary upload failed: ${uploadResponse.status}`);
-    const data = await uploadResponse.json();
-    return data.secure_url;
-}
+    canvas.toBlob(blob => {
+      // Display preview thumbnail in gallery
+      const imgURL = URL.createObjectURL(blob);
+      const img = document.createElement('img');
+      img.src = imgURL;
+      gallery.appendChild(img);
 
-function setupJotFormIntegration() {
-    if (typeof JFCustomWidget !== 'undefined') {
-        JFCustomWidget.subscribe('ready', function() {
-            JFCustomWidget.sendData({ value: '', valid: true });
-        });
-        JFCustomWidget.subscribe('submit', function() {
-            if (isSubmitting) return;
-            isSubmitting = true;
-            try {
-                // When form submits, we already sent URLs; just mark valid
-                JFCustomWidget.sendSubmit({ valid: true, value: buildValueForJotForm() });
-            } catch (error) {
-                JFCustomWidget.sendSubmit({ valid: false, value: 'error' });
-            } finally {
-                isSubmitting = false;
-            }
-        });
+      // Upload to Jotform as a real file
+      uploadToJotform(blob);
+    }, 'image/jpeg', 0.95);
+  }
+
+  function uploadToJotform(blob) {
+    if (typeof JFCustomWidget === 'undefined') {
+      console.error('JFCustomWidget not available.');
+      return;
     }
-}
 
-function buildValueForJotForm() {
-    // newline separated URLs (works well in PDF)
-    return uploadedPhotos.map(p => p.cloudinaryUrl || p.dataUrl).join('\n');
-}
+    const fileName = 'photo_' + Date.now() + '.jpg';
 
-function sendDataToJotForm() {
-    if (typeof JFCustomWidget !== 'undefined' && JFCustomWidget.sendData) {
-        JFCustomWidget.sendData({
-            value: buildValueForJotForm(),
-            valid: true
-        });
-    }
-}
+    // Upload to Jotform
+    JFCustomWidget.uploadFile(blob, fileName, function(response) {
+      console.log('File uploaded to Jotform:', response);
 
-function showState(state) {
-    ['initial','camera','preview','gallery'].forEach(s => {
-        const el = document.getElementById(s+'-state');
-        if (el) el.style.display='none';
+      // Keep track of all uploaded file URLs
+      capturedPhotos.push(response.filePath);
+
+      // Send all file URLs back to Jotform widget value
+      JFCustomWidget.sendData({
+        value: capturedPhotos.join('\n'),
+        valid: true
+      });
     });
-    const current = document.getElementById(state+'-state');
-    if (current) current.style.display='flex';
-    if (state==='gallery') updateGallery();
-}
-
-function showStatus(msg,type) {
-    const area = document.getElementById('status-area');
-    area.innerHTML = `<div class="status-message status-${type}">${msg}</div>`;
-    if (type==='success') setTimeout(()=>area.innerHTML='',3000);
-}
-
-function showLoading(show) {
-    const t=document.getElementById('approve-text');
-    const l=document.getElementById('approve-loading');
-    const b=document.getElementById('approve-btn');
-    t.style.display=show?'none':'inline';
-    l.style.display=show?'inline':'none';
-    b.disabled=show;
-}
-
-async function startCamera() {
-    try {
-        showState('camera');
-        const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}});
-        currentStream=stream;
-        const video=document.getElementById('video');
-        video.srcObject=stream;
-        await video.play();
-    } catch (err) {
-        showStatus('Camera access denied or unavailable','error');
-        showState('initial');
-    }
-}
-
-function stopCamera() {
-    if (currentStream) {
-        currentStream.getTracks().forEach(t=>t.stop());
-        currentStream=null;
-    }
-}
-
-function capturePhoto() {
-    const video=document.getElementById('video');
-    const preview=document.getElementById('preview-image');
-    if (video && video.videoWidth>0) {
-        const canvas=document.createElement('canvas');
-        canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-        canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-        currentPhotoDataUrl=canvas.toDataURL('image/jpeg',0.9);
-        preview.src=currentPhotoDataUrl;
-        stopCamera();
-        showState('preview');
-    } else {
-        showStatus('Camera not ready','error');
-    }
-}
-
-function cancelCamera() {stopCamera();showState('initial');}
-function retakePhoto() {showState('camera');startCamera();}
-
-async function approvePhoto() {
-    if (!currentPhotoDataUrl) {showStatus('No photo to approve','error');return;}
-    showLoading(true);
-    try {
-        const cloudUrl=await uploadToCloudinary(currentPhotoDataUrl);
-        uploadedPhotos.push({dataUrl:currentPhotoDataUrl,cloudinaryUrl:cloudUrl,timestamp:Date.now()});
-        sendDataToJotForm();
-        showState('gallery');
-        showStatus('Photo uploaded successfully!','success');
-    } catch (e) {
-        uploadedPhotos.push({dataUrl:currentPhotoDataUrl,timestamp:Date.now()});
-        sendDataToJotForm();
-        showState('gallery');
-        showStatus('Upload failed: '+e.message,'error');
-    } finally {
-        showLoading(false);currentPhotoDataUrl='';
-    }
-}
-
-function updateGallery() {
-    const list=document.getElementById('photos-list');
-    list.innerHTML='';
-    if (uploadedPhotos.length===0) {
-        list.innerHTML='<div class="empty-state">No photos uploaded yet</div>';
-        return;
-    }
-    uploadedPhotos.forEach((photo,index)=>{
-        const item=document.createElement('div');item.className='photo-item';
-        const img=document.createElement('img');
-        img.src=photo.dataUrl; img.className='photo-thumbnail';
-        img.alt=`Uploaded photo ${index+1}`; img.style.objectFit='cover';
-        img.addEventListener('click',()=>viewPhoto(photo.dataUrl));
-        const del=document.createElement('button');del.className='photo-delete-btn';del.innerHTML='×';
-        del.addEventListener('click',e=>{e.stopPropagation();deletePhoto(index);});
-        item.appendChild(img);item.appendChild(del);list.appendChild(item);
-    });
-}
-
-function viewPhoto(url) {
-    const modal=document.createElement('div');modal.className='modal-overlay';
-    modal.innerHTML=`<div class="modal-content"><img src="${url}" class="modal-image"><button class="modal-close">×</button></div>`;
-    modal.querySelector('.modal-close').addEventListener('click',()=>document.body.removeChild(modal));
-    modal.addEventListener('click',e=>{if(e.target===modal)document.body.removeChild(modal);});
-    document.body.appendChild(modal);
-}
-
-function deletePhoto(index) {
-    if (confirm('Are you sure you want to delete this photo?')) {
-        uploadedPhotos.splice(index,1);updateGallery();sendDataToJotForm();
-    }
-}
-
-function addMorePhotos(){showState('initial');}
-function finish(){showStatus('Upload completed successfully!','success');sendDataToJotForm();}
-
-document.addEventListener('DOMContentLoaded',function(){
-    initCameraWidget();
-    setTimeout(setupJotFormIntegration,100);
-});
+  }
 </script>
-</body>
-</html>
